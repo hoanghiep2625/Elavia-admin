@@ -1,7 +1,7 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
 import { useCustom } from "@refinedev/core";
 import type { BaseRecord } from "@refinedev/core";
-import { Space, Table, Image } from "antd";
+import { Space, Table, Image, Input } from "antd";
 import { useState } from "react";
 
 export const ProductVariantList = () => {
@@ -9,7 +9,8 @@ export const ProductVariantList = () => {
     current: 1,
     pageSize: 10,
   });
-
+  const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
+  const [search, setSearch] = useState("");
   const { data, isLoading, isError } = useCustom({
     url: "/admin/variants",
     method: "get",
@@ -17,6 +18,8 @@ export const ProductVariantList = () => {
       query: {
         _page: pagination.current,
         _limit: pagination.pageSize,
+        _sort: sorter.field,
+        _order: sorter.order,
       },
     },
   });
@@ -24,20 +27,37 @@ export const ProductVariantList = () => {
   const tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
-  const handleTableChange = (newPagination: any) => {
+  const handleTableChange = (newPagination: any,_: any, sorterConfig: any) => {
     setPagination({
       current: newPagination.current,
       pageSize: newPagination.pageSize,
     });
+     if (sorterConfig && sorterConfig.field) {
+      setSorter({
+        field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
+        order: sorterConfig.order === "ascend" ? "asc" : "desc",
+      });
+    } else {
+      setSorter({});
+    }
   };
 
   return (
     <List>
+      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
+              <Input.Search
+                placeholder="Tìm kiếm sản phẩm biến thể"
+                allowClear
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ width: 320 }}
+              />
+            </div>
       {isLoading ? (
         <div>Đang tải...</div>
       ) : isError ? (
         <div>Lỗi khi tải dữ liệu</div>
       ) : (
+        
         <Table
           dataSource={tableData}
           rowKey="_id"
@@ -54,11 +74,20 @@ export const ProductVariantList = () => {
           <Table.Column
             dataIndex={["productId", "name"]}
             title="Sản phẩm"
+            sorter={true}
             render={(value) => value || "Không xác định"}
           />
-          <Table.Column dataIndex="sku" title="SKU" />
+          <Table.Column dataIndex="sku" title="SKU" sorter={true} />
           <Table.Column
             title="Màu"
+             sorter={{
+              compare: (a, b) => {
+                const nameA = a.color?.colorName || "";
+                const nameB = b.color?.colorName || "";
+                return nameA.localeCompare(nameB);
+              },
+              multiple: 1,
+            }}
             render={(_, record) => {
               const color = record.color || {};
               return (
@@ -78,7 +107,7 @@ export const ProductVariantList = () => {
               );
             }}
           />
-          <Table.Column dataIndex="price" title="Giá" />
+          <Table.Column dataIndex="price" title="Giá" sorter={true} />
           <Table.Column
             dataIndex={["images", "main", "url"]}
             title="Ảnh chính"
