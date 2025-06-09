@@ -1,6 +1,7 @@
-import { List, useTable, DateField, ShowButton } from "@refinedev/antd";
+import React, { useState } from "react";
+import { List, DateField, ShowButton } from "@refinedev/antd";
 import { Table, Tag } from "antd";
-import { log } from "console";
+import { useCustom } from "@refinedev/core";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -30,16 +31,46 @@ const getStatusColor = (status: string) => {
 };
 
 export const OrderList = () => {
-  const { tableProps } = useTable({
-    resource: "orders",
-    syncWithLocation: true,
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
   });
 
-  const data = (tableProps.dataSource as any)?.data ?? [];
+  const { data, isLoading } = useCustom({
+    url: "/admin/orders",
+    method: "get",
+    config: {
+      query: {
+        _page: pagination.current,
+        _limit: pagination.pageSize,
+      },
+    },
+  });
+
+  const tableData = data?.data?.data || [];
+  const total = data?.data?.total || 0;
+
+  const handleTableChange = (paginationConfig: any) => {
+    setPagination({
+      current: paginationConfig.current,
+      pageSize: paginationConfig.pageSize,
+    });
+  };
 
   return (
     <List>
-      <Table {...tableProps} rowKey="_id" dataSource={data}>
+      <Table
+        rowKey="_id"
+        dataSource={tableData}
+        loading={isLoading}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total,
+          showSizeChanger: true,
+        }}
+        onChange={handleTableChange}
+      >
         <Table.Column
           title="Khách hàng"
           dataIndex={["user", "name"]}

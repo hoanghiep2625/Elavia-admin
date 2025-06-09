@@ -1,14 +1,28 @@
-import { EditButton, List, ShowButton, useTable } from "@refinedev/antd";
+import { EditButton, List, ShowButton } from "@refinedev/antd";
 import type { BaseRecord } from "@refinedev/core";
 import { Space, Table, Tag } from "antd";
+import { useState } from "react";
+import { useCustom } from "@refinedev/core";
 
 export const UserList = () => {
-  const { tableProps } = useTable({
-    resource: "users",
-    syncWithLocation: true,
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
   });
 
-  const data = (tableProps.dataSource as any) ?? [];
+  const { data, isLoading } = useCustom({
+    url: "/admin/users",
+    method: "get",
+    config: {
+      query: {
+        _page: pagination.current,
+        _limit: pagination.pageSize,
+      },
+    },
+  });
+
+  const tableData = data?.data?.data ?? [];
+  const total = data?.data?.total ?? 0;
 
   // Lấy SĐT mặc định từ shipping_addresses
   const getDefaultPhone = (record: any) => {
@@ -18,12 +32,26 @@ export const UserList = () => {
     return defaultAddress?.phone || record.phone || "Không có";
   };
 
+  const handleTableChange = (paginationConfig: any) => {
+    setPagination({
+      current: paginationConfig.current,
+      pageSize: paginationConfig.pageSize,
+    });
+  };
+
   return (
     <List>
       <Table
-        {...tableProps}
-        dataSource={Array.isArray(data) ? data : []}
+        dataSource={Array.isArray(tableData) ? tableData : []}
         rowKey="_id"
+        loading={isLoading}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total,
+          showSizeChanger: true,
+        }}
+        onChange={handleTableChange}
       >
         <Table.Column dataIndex="email" title="Email" />
 
