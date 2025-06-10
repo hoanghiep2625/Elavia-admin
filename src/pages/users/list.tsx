@@ -1,6 +1,6 @@
 import { EditButton, List, ShowButton } from "@refinedev/antd";
 import type { BaseRecord } from "@refinedev/core";
-import { Space, Table, Tag } from "antd";
+import { Input, Space, Table, Tag } from "antd";
 import { useState } from "react";
 import { useCustom } from "@refinedev/core";
 
@@ -10,18 +10,24 @@ export const UserList = () => {
     pageSize: 10,
   });
 
-  const { data, isLoading } = useCustom({
+   const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
+  const [search, setSearch] = useState("");
+
+ const { data, isLoading } = useCustom({
     url: "/admin/users",
     method: "get",
     config: {
       query: {
         _page: pagination.current,
         _limit: pagination.pageSize,
+        _sort: sorter.field,
+        _order: sorter.order,
+        q: search,
       },
     },
   });
 
-  const tableData = data?.data?.data ?? [];
+   let tableData = data?.data?.data ?? [];
   const total = data?.data?.total ?? 0;
 
   // Lấy SĐT mặc định từ shipping_addresses
@@ -32,15 +38,41 @@ export const UserList = () => {
     return defaultAddress?.phone || record.phone || "Không có";
   };
 
-  const handleTableChange = (paginationConfig: any) => {
+   // Nếu backend không hỗ trợ search, filter phía client
+  if (search) {
+    tableData = tableData.filter(
+      (item: any) =>
+        item?.email?.toLowerCase().includes(search.toLowerCase()) ||
+        getDefaultPhone(item)?.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+
+  const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
     setPagination({
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize,
     });
+    if (sorterConfig && sorterConfig.field) {
+      setSorter({
+        field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
+        order: sorterConfig.order === "ascend" ? "asc" : "desc",
+      });
+    } else {
+      setSorter({});
+    }
   };
 
-  return (
+
+ return (
     <List>
+      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
+        <Input.Search
+          placeholder="Tìm kiếm email hoặc SĐT"
+          allowClear
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 320 }}
+        />
+      </div>
       <Table
         dataSource={Array.isArray(tableData) ? tableData : []}
         rowKey="_id"
@@ -50,13 +82,19 @@ export const UserList = () => {
           pageSize: pagination.pageSize,
           total,
           showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} bản ghi`,
         }}
         onChange={handleTableChange}
       >
-        <Table.Column dataIndex="email" title="Email" />
+        <Table.Column
+          dataIndex="email"
+          title="Email"
+          sorter={true}
+        />
 
         <Table.Column
           title="SĐT"
+          sorter={true}
           render={(_, record: any) => getDefaultPhone(record)}
         />
 

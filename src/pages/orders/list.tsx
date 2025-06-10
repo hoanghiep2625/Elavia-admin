@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { List, DateField, ShowButton } from "@refinedev/antd";
-import { Table, Tag } from "antd";
+import { Table, Tag, Input } from "antd";
 import { useCustom } from "@refinedev/core";
 
 const getStatusColor = (status: string) => {
@@ -36,6 +36,9 @@ export const OrderList = () => {
     pageSize: 10,
   });
 
+  const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
+  const [search, setSearch] = useState("");
+
   const { data, isLoading } = useCustom({
     url: "/admin/orders",
     method: "get",
@@ -43,47 +46,74 @@ export const OrderList = () => {
       query: {
         _page: pagination.current,
         _limit: pagination.pageSize,
+        _sort: sorter.field,
+        _order: sorter.order,
+        q: search, // tuỳ backend, nếu không hỗ trợ thì filter phía client
       },
     },
   });
 
-  const tableData = data?.data?.data || [];
+  let tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
-  const handleTableChange = (paginationConfig: any) => {
+   if (search) {
+    tableData = tableData.filter((item: any) =>
+      item?.user?.name?.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+  const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
     setPagination({
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize,
     });
+    if (sorterConfig && sorterConfig.field) {
+      setSorter({
+        field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
+        order: sorterConfig.order === "ascend" ? "asc" : "desc",
+      });
+    } else {
+      setSorter({});
+    }
   };
-
   return (
     <List>
+      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
+        <Input.Search
+          placeholder="Tìm kiếm khách hàng"
+          allowClear
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 320 }}
+        />
+      </div>
       <Table
         rowKey="_id"
-        dataSource={tableData}
+        dataSource={Array.isArray(tableData) ? tableData : []}
         loading={isLoading}
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,
           total,
           showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} bản ghi`,
         }}
         onChange={handleTableChange}
       >
         <Table.Column
           title="Khách hàng"
           dataIndex={["user", "name"]}
+          sorter={true}
           render={(name: string) => name || "Không có"}
         />
         <Table.Column
           title="SĐT"
           dataIndex={["user", "phone"]}
+          sorter={true}
           render={(phone: string) => phone || "Không có"}
         />
         <Table.Column
           title="Tổng tiền"
           dataIndex="totalAmount"
+          sorter={true}
           render={(amount: number) => amount?.toLocaleString("vi-VN") + "đ"}
         />
         <Table.Column
