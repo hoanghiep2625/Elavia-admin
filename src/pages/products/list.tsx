@@ -1,7 +1,7 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
 import type { BaseRecord } from "@refinedev/core";
 import { Button, Input, Space, Table } from "antd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCustom } from "@refinedev/core";
 
 export const ProductList = () => {
@@ -10,7 +10,15 @@ export const ProductList = () => {
     pageSize: 10,
   });
   const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
-  const [search, setSearch] = useState("");
+  const [nameSearch, setNameSearch] = useState("");
+  const [skuSearch, setSkuSearch] = useState("");
+  const [filters, setFilters] = useState({ _name: "", _sku: "" });
+
+  // Trigger search when filters change
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, current: 1 }));
+  }, [filters]);
+
   const { data, isLoading } = useCustom({
     url: "/admin/products",
     method: "get",
@@ -20,6 +28,8 @@ export const ProductList = () => {
         _limit: pagination.pageSize,
         _sort: sorter.field,
         _order: sorter.order,
+        ...(filters._name ? { _name: filters._name } : {}),
+        ...(filters._sku ? { _sku: filters._sku } : {}),
       },
     },
   });
@@ -48,15 +58,33 @@ export const ProductList = () => {
     }
   };
 
+  const handleSearch = () => {
+    setFilters({
+      _name: nameSearch.trim(),
+      _sku: skuSearch.trim(),
+    });
+  };
+
   return (
     <List>
       <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-        <Input.Search
-          placeholder="Tìm kiếm sản phẩm"
+        <Input
+          placeholder="Tìm theo tên sản phẩm"
           allowClear
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 320 }}
+          value={nameSearch}
+          onChange={(e) => setNameSearch(e.target.value)}
+          style={{ width: 200 }}
         />
+        <Input
+          placeholder="Tìm theo SKU"
+          allowClear
+          value={skuSearch}
+          onChange={(e) => setSkuSearch(e.target.value)}
+          style={{ width: 200 }}
+        />
+        <Button type="primary" onClick={handleSearch}>
+          Tìm kiếm
+        </Button>
       </div>
       <Table
         dataSource={Array.isArray(tableData) ? tableData : []}
@@ -91,8 +119,6 @@ export const ProductList = () => {
                 size="small"
                 type="primary"
                 onClick={() => {
-                  // Thay đổi logic này theo luồng thêm biến thể của bạn
-                  // Ví dụ: chuyển trang hoặc mở modal
                   window.location.href = `/products/${record._id}/variants/create`;
                 }}
               >
