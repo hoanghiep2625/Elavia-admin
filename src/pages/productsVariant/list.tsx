@@ -1,7 +1,7 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
-import { useCustom } from "@refinedev/core";
-import type { BaseRecord } from "@refinedev/core";
-import { Space, Table, Image, Input } from "antd";
+import { BaseRecord, useCustom } from "@refinedev/core";
+
+import { Space, Table, Image, Input, Button, Select } from "antd";
 import { useState } from "react";
 
 export const ProductVariantList = () => {
@@ -10,7 +10,19 @@ export const ProductVariantList = () => {
     pageSize: 10,
   });
   const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
-  const [search, setSearch] = useState("");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [baseColors, setBaseColors] = useState("");
+  const [nameSearch, setNameSearch] = useState("");
+  const [skuSearch, setSkuSearch] = useState("");
+  const [filters, setFilters] = useState<{
+    _priceMin?: string;
+    _priceMax?: string;
+    _baseColors?: string;
+    _name?: string;
+    _sku?: string;
+  }>({});
+
   const { data, isLoading, isError } = useCustom({
     url: "/admin/variants",
     method: "get",
@@ -20,6 +32,11 @@ export const ProductVariantList = () => {
         _limit: pagination.pageSize,
         _sort: sorter.field,
         _order: sorter.order,
+        ...((filters._priceMin && filters._priceMin !== "") ? { _priceMin: filters._priceMin } : {}),
+        ...((filters._priceMax && filters._priceMax !== "") ? { _priceMax: filters._priceMax } : {}),
+        ...((filters._baseColors && filters._baseColors !== "") ? { _baseColors: filters._baseColors } : {}),
+        ...((filters._name && filters._name !== "") ? { _name: filters._name } : {}),
+        ...((filters._sku && filters._sku !== "") ? { _sku: filters._sku } : {}),
       },
     },
   });
@@ -27,12 +44,12 @@ export const ProductVariantList = () => {
   const tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
-  const handleTableChange = (newPagination: any,_: any, sorterConfig: any) => {
+  const handleTableChange = (newPagination: any, _: any, sorterConfig: any) => {
     setPagination({
       current: newPagination.current,
       pageSize: newPagination.pageSize,
     });
-     if (sorterConfig && sorterConfig.field) {
+    if (sorterConfig && sorterConfig.field) {
       setSorter({
         field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
         order: sorterConfig.order === "ascend" ? "asc" : "desc",
@@ -42,22 +59,79 @@ export const ProductVariantList = () => {
     }
   };
 
+  const handleSearch = () => {
+    setFilters({
+      _priceMin: priceMin.trim(),
+      _priceMax: priceMax.trim(),
+      _baseColors: baseColors,
+      _name: nameSearch.trim(),
+      _sku: skuSearch.trim(),
+    });
+    setPagination((prev) => ({ ...prev, current: 1 }));
+  };
+
   return (
     <List>
       <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-              <Input.Search
-                placeholder="Tìm kiếm sản phẩm biến thể"
-                allowClear
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ width: 320 }}
-              />
-            </div>
+        <Input
+          placeholder="Tên sản phẩm"
+          value={nameSearch}
+          allowClear
+          onChange={(e) => setNameSearch(e.target.value)}
+          style={{ width: 160 }}
+        />
+        <Input
+          placeholder="Mã sản phẩm (SKU)"
+          value={skuSearch}
+          allowClear
+          onChange={(e) => setSkuSearch(e.target.value)}
+          style={{ width: 160 }}
+        />
+        <Input
+          placeholder="Giá thấp nhất"
+          value={priceMin}
+          onChange={(e) => setPriceMin(e.target.value)}
+          style={{ width: 120 }}
+          type="number"
+          min={0}
+        />
+        <Input
+          placeholder="Giá cao nhất"
+          value={priceMax}
+          onChange={(e) => setPriceMax(e.target.value)}
+          style={{ width: 120 }}
+          type="number"
+          min={0}
+        />
+        <Select
+          placeholder="Chọn màu cơ bản"
+          allowClear
+          style={{ width: 160 }}
+          value={baseColors || undefined}
+          onChange={(value) => setBaseColors(value || "")}
+        >
+          <Select.Option value="black">Đen</Select.Option>
+          <Select.Option value="white">Trắng</Select.Option>
+          <Select.Option value="blue">Xanh dương</Select.Option>
+          <Select.Option value="yellow">Vàng</Select.Option>
+          <Select.Option value="pink">Hồng</Select.Option>
+          <Select.Option value="red">Đỏ</Select.Option>
+          <Select.Option value="gray">Xám</Select.Option>
+          <Select.Option value="beige">Be</Select.Option>
+          <Select.Option value="brown">Nâu</Select.Option>
+          <Select.Option value="green">Xanh lá</Select.Option>
+          <Select.Option value="orange">Cam</Select.Option>
+          <Select.Option value="purple">Tím</Select.Option>
+        </Select>
+        <Button type="primary" onClick={handleSearch}>
+          Tìm kiếm
+        </Button>
+      </div>
       {isLoading ? (
         <div>Đang tải...</div>
       ) : isError ? (
         <div>Lỗi khi tải dữ liệu</div>
       ) : (
-        
         <Table
           dataSource={tableData}
           rowKey="_id"
@@ -80,7 +154,7 @@ export const ProductVariantList = () => {
           <Table.Column dataIndex="sku" title="SKU" sorter={true} />
           <Table.Column
             title="Màu"
-             sorter={{
+            sorter={{
               compare: (a, b) => {
                 const nameA = a.color?.colorName || "";
                 const nameB = b.color?.colorName || "";
