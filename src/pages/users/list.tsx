@@ -1,6 +1,6 @@
 import { EditButton, List, ShowButton } from "@refinedev/antd";
 import type { BaseRecord } from "@refinedev/core";
-import { Input, Space, Table, Tag } from "antd";
+import { Input, Space, Table, Tag, Button } from "antd";
 import { useState } from "react";
 import { useCustom } from "@refinedev/core";
 
@@ -10,10 +10,14 @@ export const UserList = () => {
     pageSize: 10,
   });
 
-   const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
-  const [search, setSearch] = useState("");
+  const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
+  // Tách input và search state
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingPhone, setPendingPhone] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
+  const [searchPhone, setSearchPhone] = useState("");
 
- const { data, isLoading } = useCustom({
+  const { data, isLoading } = useCustom({
     url: "/admin/users",
     method: "get",
     config: {
@@ -22,30 +26,14 @@ export const UserList = () => {
         _limit: pagination.pageSize,
         _sort: sorter.field,
         _order: sorter.order,
-        q: search,
+        ...(searchEmail ? { _email: searchEmail } : {}),
+        ...(searchPhone ? { _phone: searchPhone } : {}),
       },
     },
   });
 
-   let tableData = data?.data?.data ?? [];
+  let tableData = data?.data?.data ?? [];
   const total = data?.data?.total ?? 0;
-
-  // Lấy SĐT mặc định từ shipping_addresses
-  const getDefaultPhone = (record: any) => {
-    const defaultAddress = record?.shipping_addresses?.find(
-      (addr: any) => addr.isDefault
-    );
-    return defaultAddress?.phone || record.phone || "Không có";
-  };
-
-   // Nếu backend không hỗ trợ search, filter phía client
-  if (search) {
-    tableData = tableData.filter(
-      (item: any) =>
-        item?.email?.toLowerCase().includes(search.toLowerCase()) ||
-        getDefaultPhone(item)?.toLowerCase().includes(search.toLowerCase())
-    );
-  }
 
   const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
     setPagination({
@@ -62,16 +50,33 @@ export const UserList = () => {
     }
   };
 
+  // Khi bấm nút tìm kiếm
+  const handleSearch = () => {
+    setSearchEmail(pendingEmail);
+    setSearchPhone(pendingPhone);
+    setPagination({ ...pagination, current: 1 });
+  };
 
- return (
+  return (
     <List>
-      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-        <Input.Search
-          placeholder="Tìm kiếm email hoặc SĐT"
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <Input
+          placeholder="Tìm kiếm email"
           allowClear
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 320 }}
+          value={pendingEmail}
+          onChange={(e) => setPendingEmail(e.target.value)}
+          style={{ width: 220 }}
         />
+        <Input
+          placeholder="Tìm kiếm SĐT"
+          allowClear
+          value={pendingPhone}
+          onChange={(e) => setPendingPhone(e.target.value)}
+          style={{ width: 220 }}
+        />
+        <Button type="primary" onClick={handleSearch}>
+          Tìm kiếm
+        </Button>
       </div>
       <Table
         dataSource={Array.isArray(tableData) ? tableData : []}
@@ -95,7 +100,7 @@ export const UserList = () => {
         <Table.Column
           title="SĐT"
           sorter={true}
-          render={(_, record: any) => getDefaultPhone(record)}
+          dataIndex={"phone"}
         />
 
         <Table.Column

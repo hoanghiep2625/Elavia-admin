@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { List, DateField, ShowButton } from "@refinedev/antd";
-import { Table, Tag, Input } from "antd";
+import { Table, Tag, Input, Select, Button } from "antd";
 import { useCustom } from "@refinedev/core";
 
 const getStatusColor = (status: string) => {
@@ -37,30 +37,41 @@ export const OrderList = () => {
   });
 
   const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
-  const [search, setSearch] = useState("");
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingUser, setPendingUser] = useState("");
+  const [pendingPhone, setPendingPhone] = useState("");
+  const [pendingAddress, setPendingAddress] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+
+  const [searchOrderId, setSearchOrderId] = useState("");
+  const [searchUser, setSearchUser] = useState("");
+  const [searchPhone, setSearchPhone] = useState("");
+  const [searchAddress, setSearchAddress] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
+
+  const query: Record<string, any> = {
+    _page: pagination.current,
+    _limit: pagination.pageSize,
+    _sort: sorter.field,
+    _order: sorter.order,
+  };
+  if (searchOrderId) query._orderId = searchOrderId;
+  if (searchUser) query._user = searchUser;
+  if (searchPhone) query._phone = searchPhone;
+  if (searchAddress) query._address = searchAddress;
+  if (searchEmail) query._email = searchEmail;
 
   const { data, isLoading } = useCustom({
     url: "/admin/orders",
     method: "get",
     config: {
-      query: {
-        _page: pagination.current,
-        _limit: pagination.pageSize,
-        _sort: sorter.field,
-        _order: sorter.order,
-        q: search, // tuỳ backend, nếu không hỗ trợ thì filter phía client
-      },
+      query,
     },
   });
 
   let tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
-  if (search) {
-    tableData = tableData.filter((item: any) =>
-      item?.user?.name?.toLowerCase().includes(search.toLowerCase())
-    );
-  }
   const handleTableChange = (
     paginationConfig: any,
     _: any,
@@ -81,15 +92,57 @@ export const OrderList = () => {
       setSorter({});
     }
   };
+
+  const handleSearch = () => {
+    setSearchOrderId(pendingOrderId);
+    setSearchUser(pendingUser);
+    setSearchPhone(pendingPhone);
+    setSearchAddress(pendingAddress);
+    setSearchEmail(pendingEmail);
+    setPagination({ ...pagination, current: 1 });
+  };
+
   return (
     <List>
-      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-        <Input.Search
-          placeholder="Tìm kiếm khách hàng"
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <Input
+          placeholder="Mã đơn hàng"
           allowClear
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 320 }}
+          value={pendingOrderId}
+          onChange={(e) => setPendingOrderId(e.target.value)}
+          style={{ width: 160 }}
         />
+        <Input
+          placeholder="Tên khách hàng"
+          allowClear
+          value={pendingUser}
+          onChange={(e) => setPendingUser(e.target.value)}
+          style={{ width: 160 }}
+        />
+        <Input
+          placeholder="Số điện thoại"
+          allowClear
+          value={pendingPhone}
+          onChange={(e) => setPendingPhone(e.target.value)}
+          style={{ width: 160 }}
+        />
+        <Input
+          placeholder="Địa chỉ"
+          allowClear
+          value={pendingAddress}
+          onChange={(e) => setPendingAddress(e.target.value)}
+          style={{ width: 160 }}
+        />
+        <Input
+          placeholder="Email"
+          allowClear
+          value={pendingEmail}
+          onChange={(e) => setPendingEmail(e.target.value)}
+          style={{ width: 160 }}
+        />
+        <Button type="primary" onClick={handleSearch}>
+          Tìm kiếm
+        </Button>
       </div>
       <Table
         rowKey="_id"
@@ -174,7 +227,6 @@ export const OrderList = () => {
           render={(_, record: any) => (
             <span style={{ display: "flex", gap: 8 }}>
               <ShowButton hideText recordItemId={record._id} />
-              {/* Thêm các nút cập nhật trạng thái, huỷ đơn ở đây nếu cần */}
             </span>
           )}
         />
