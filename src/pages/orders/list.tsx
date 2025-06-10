@@ -56,19 +56,25 @@ export const OrderList = () => {
   let tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
-   if (search) {
+  if (search) {
     tableData = tableData.filter((item: any) =>
       item?.user?.name?.toLowerCase().includes(search.toLowerCase())
     );
   }
-  const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
+  const handleTableChange = (
+    paginationConfig: any,
+    _: any,
+    sorterConfig: any
+  ) => {
     setPagination({
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize,
     });
     if (sorterConfig && sorterConfig.field) {
       setSorter({
-        field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
+        field: Array.isArray(sorterConfig.field)
+          ? sorterConfig.field.join(".")
+          : sorterConfig.field,
         order: sorterConfig.order === "ascend" ? "asc" : "desc",
       });
     } else {
@@ -99,6 +105,13 @@ export const OrderList = () => {
         onChange={handleTableChange}
       >
         <Table.Column
+          title="STT"
+          render={(_, __, index) =>
+            (pagination.current - 1) * pagination.pageSize + index + 1
+          }
+        />
+        <Table.Column title="Mã đơn hàng" dataIndex="orderId" sorter={true} />
+        <Table.Column
           title="Khách hàng"
           dataIndex={["user", "name"]}
           sorter={true}
@@ -111,14 +124,45 @@ export const OrderList = () => {
           render={(phone: string) => phone || "Không có"}
         />
         <Table.Column
+          title="Địa chỉ giao hàng"
+          sorter={true}
+          render={(_, record: any) => record?.user?.address || "Không có"}
+        />
+        <Table.Column
+          title="Ngày đặt"
+          dataIndex="createdAt"
+          sorter={true}
+          render={(value: string) => (
+            <DateField value={value} format="DD/MM/YYYY HH:mm" />
+          )}
+        />
+        <Table.Column
           title="Tổng tiền"
           dataIndex="totalAmount"
           sorter={true}
           render={(amount: number) => amount?.toLocaleString("vi-VN") + "đ"}
         />
         <Table.Column
+          title="Phương thức TT"
+          dataIndex="paymentMethod"
+          sorter={true}
+          render={(method: string) => {
+            switch (method) {
+              case "COD":
+                return "COD";
+              case "MoMo":
+                return "MoMo";
+              case "zalopay":
+                return "ZaloPay";
+              default:
+                return method || "Không xác định";
+            }
+          }}
+        />
+        <Table.Column
           title="Trạng thái"
           dataIndex="status"
+          sorter={true}
           render={(status: string) => (
             <Tag color={getStatusColor(status || "default")}>
               {status || "Không xác định"}
@@ -126,16 +170,12 @@ export const OrderList = () => {
           )}
         />
         <Table.Column
-          title="Ngày tạo"
-          dataIndex="createdAt"
-          render={(value: string) => (
-            <DateField value={value} format="DD/MM/YYYY HH:mm" />
-          )}
-        />
-        <Table.Column
-          title="Hành động"
+          title="Thao tác"
           render={(_, record: any) => (
-            <ShowButton hideText recordItemId={record._id} />
+            <span style={{ display: "flex", gap: 8 }}>
+              <ShowButton hideText recordItemId={record._id} />
+              {/* Thêm các nút cập nhật trạng thái, huỷ đơn ở đây nếu cần */}
+            </span>
           )}
         />
       </Table>

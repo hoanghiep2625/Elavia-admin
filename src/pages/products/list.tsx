@@ -1,6 +1,6 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
 import type { BaseRecord } from "@refinedev/core";
-import { Input, Space, Table } from "antd";
+import { Button, Input, Space, Table } from "antd";
 import { useState } from "react";
 import { useCustom } from "@refinedev/core";
 
@@ -27,14 +27,20 @@ export const ProductList = () => {
   const tableData = data?.data?.data ?? [];
   const total = data?.data?.total ?? 0;
 
-  const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
+  const handleTableChange = (
+    paginationConfig: any,
+    _: any,
+    sorterConfig: any
+  ) => {
     setPagination({
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize,
     });
     if (sorterConfig && sorterConfig.field) {
       setSorter({
-        field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
+        field: Array.isArray(sorterConfig.field)
+          ? sorterConfig.field.join(".")
+          : sorterConfig.field,
         order: sorterConfig.order === "ascend" ? "asc" : "desc",
       });
     } else {
@@ -65,15 +71,14 @@ export const ProductList = () => {
         }}
         onChange={handleTableChange}
       >
-        <Table.Column dataIndex="name" title="Tên sản phẩm" sorter={true}/>
-        <Table.Column dataIndex="sku" title="SKU" sorter={true}/>
+        <Table.Column dataIndex="name" title="Tên sản phẩm" sorter={true} />
+        <Table.Column dataIndex="sku" title="SKU" sorter={true} />
         <Table.Column
           dataIndex={["categoryId", "name"]}
           title="Danh mục"
           sorter={true}
           render={(value) => value || "Không xác định"}
         />
-        <Table.Column dataIndex="shortDescription" title="Mô tả ngắn" />
         <Table.Column
           title="Hành động"
           dataIndex="actions"
@@ -82,6 +87,17 @@ export const ProductList = () => {
               <EditButton hideText size="small" recordItemId={record._id} />
               <ShowButton hideText size="small" recordItemId={record._id} />
               <DeleteButton hideText size="small" recordItemId={record._id} />
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => {
+                  // Thay đổi logic này theo luồng thêm biến thể của bạn
+                  // Ví dụ: chuyển trang hoặc mở modal
+                  window.location.href = `/products/${record._id}/variants/create`;
+                }}
+              >
+                Thêm biến thể
+              </Button>
             </Space>
           )}
         />
