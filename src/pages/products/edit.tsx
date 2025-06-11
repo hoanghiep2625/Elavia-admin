@@ -3,6 +3,7 @@ import { Form, Input, TreeSelect } from "antd";
 import React, { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import axios from "axios";
 
 // Hàm dựng cấu trúc cây danh mục
 const buildTreeData = (
@@ -19,8 +20,8 @@ const buildTreeData = (
     }));
 };
 
-export const ProductEdit = () => {
-  const { formProps, saveButtonProps, queryResult } = useForm({
+export const ProductEdit = ({ variantId }: { variantId: string }) => {
+  const { formProps, saveButtonProps } = useForm({
     resource: "products",
     action: "edit",
     meta: {
@@ -31,7 +32,7 @@ export const ProductEdit = () => {
   const { tableProps: categoryTableProps } = useTable({
     resource: "categories",
     syncWithLocation: false,
-    pagination: { pageSize: 1000 }, // lấy tất cả danh mục
+    pagination: { pageSize: 1000 },
   });
 
   const [treeData, setTreeData] = useState<any[]>([]);
@@ -46,15 +47,43 @@ export const ProductEdit = () => {
     const tree = buildTreeData(raw);
     setTreeData(tree);
 
-    // Sau khi treeData có và form đã có dữ liệu -> set categoryId vào form
-    if (formProps?.initialValues?.categoryId) {
+    // Nếu categoryId là object, lấy _id
+    let categoryValue = formProps?.initialValues?.categoryId;
+    if (categoryValue && typeof categoryValue === "object" && categoryValue._id) {
+      categoryValue = categoryValue._id;
+    }
+
+    if (categoryValue) {
       formProps.form?.setFieldsValue({
-        categoryId: formProps.initialValues.categoryId,
+        categoryId: categoryValue,
       });
     }
 
     setIsReady(true);
   }, [categoryTableProps.dataSource, formProps.initialValues]);
+
+  // Lấy dữ liệu variant và set vào form
+  useEffect(() => {
+    if (!variantId) return;
+    const fetchVariant = async () => {
+      try {
+        const res = await axios.get(`http://localhost:5175/api/admin/variants/${variantId}`);
+        const data = res.data;
+        // Set các trường vào form, chú ý trường categoryId
+        formProps.form?.setFieldsValue({
+          name: data.name,
+          sku: data.sku,
+          categoryId: data.categoryId,
+          shortDescription: data.shortDescription,
+          description: data.description,
+        });
+        setIsReady(true);
+      } catch (err) {
+        setIsReady(true);
+      }
+    };
+    fetchVariant();
+  }, [variantId, formProps.form]);
 
   if (!isReady) return <div>Đang tải dữ liệu sản phẩm...</div>;
 
@@ -89,7 +118,7 @@ export const ProductEdit = () => {
             showSearch
             treeDefaultExpandAll={false}
             treeLine
-            treeDefaultExpandedKeys={[]} // Đảm bảo không expand toàn bộ
+            treeDefaultExpandedKeys={[]}
           />
         </Form.Item>
 
