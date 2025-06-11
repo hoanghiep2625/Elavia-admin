@@ -85,13 +85,13 @@ export const ProductVariantList = () => {
           value={skuSearch}
           allowClear
           onChange={(e) => setSkuSearch(e.target.value)}
-          style={{ width: 160 }}
+          style={{ width: 180 }}
         />
         <Input
           placeholder="Giá thấp nhất"
           value={priceMin}
           onChange={(e) => setPriceMin(e.target.value)}
-          style={{ width: 120 }}
+          style={{ width: 140 }}
           type="number"
           min={0}
         />
@@ -99,7 +99,7 @@ export const ProductVariantList = () => {
           placeholder="Giá cao nhất"
           value={priceMax}
           onChange={(e) => setPriceMax(e.target.value)}
-          style={{ width: 120 }}
+          style={{ width: 140 }}
           type="number"
           min={0}
         />
