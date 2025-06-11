@@ -32,17 +32,23 @@ export const UserList = () => {
     },
   });
 
-  let tableData = data?.data?.data ?? [];
+  const tableData = data?.data?.data ?? [];
   const total = data?.data?.total ?? 0;
 
-  const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
+  const handleTableChange = (
+    paginationConfig: any,
+    _: any,
+    sorterConfig: any
+  ) => {
     setPagination({
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize,
     });
     if (sorterConfig && sorterConfig.field) {
       setSorter({
-        field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
+        field: Array.isArray(sorterConfig.field)
+          ? sorterConfig.field.join(".")
+          : sorterConfig.field,
         order: sorterConfig.order === "ascend" ? "asc" : "desc",
       });
     } else {
@@ -59,7 +65,15 @@ export const UserList = () => {
 
   return (
     <List>
-      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <Input
           placeholder="Tìm kiếm email"
           allowClear
@@ -91,17 +105,9 @@ export const UserList = () => {
         }}
         onChange={handleTableChange}
       >
-        <Table.Column
-          dataIndex="email"
-          title="Email"
-          sorter={true}
-        />
+        <Table.Column dataIndex="email" title="Email" sorter={true} />
 
-        <Table.Column
-          title="SĐT"
-          sorter={true}
-          dataIndex={"phone"}
-        />
+        <Table.Column title="SĐT" sorter={true} dataIndex={"phone"} />
 
         <Table.Column
           dataIndex="role"
