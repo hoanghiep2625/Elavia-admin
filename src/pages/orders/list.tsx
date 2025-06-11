@@ -69,7 +69,7 @@ export const OrderList = () => {
     },
   });
 
-  let tableData = data?.data?.data || [];
+  const tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
   const handleTableChange = (
@@ -175,6 +175,12 @@ export const OrderList = () => {
           dataIndex={["user", "phone"]}
           sorter={true}
           render={(phone: string) => phone || "Không có"}
+        />
+        <Table.Column
+          title="Email"
+          dataIndex={["user", "email"]}
+          sorter={true}
+          render={(email: string) => email || "Không có"}
         />
         <Table.Column
           title="Địa chỉ giao hàng"

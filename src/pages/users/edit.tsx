@@ -1,25 +1,37 @@
 import { Edit, useForm } from "@refinedev/antd";
 import { Form, Input, Select, DatePicker, Table, Tag } from "antd";
+import dayjs from "dayjs";
 
 export const UserEdit = () => {
   const { formProps, saveButtonProps, queryResult } = useForm({
-    resource: "users",
+    resource: "users", // Đúng với API backend
   });
 
   const user = queryResult?.data?.data;
+
+  // Chuẩn hóa initialValues từ user (nếu có)
+  const initialValues = user
+    ? {
+        ...user,
+        date: user.date ? dayjs(user.date) : undefined,
+        sex: user.sex ?? "1",
+        role: user.role ?? "3",
+      }
+    : {
+        sex: "1",
+        role: "3",
+      };
 
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form
         {...formProps}
         layout="vertical"
-        initialValues={{
-          sex: "1",
-          role: "3",
-        }}
+        initialValues={initialValues}
+        key={user?._id}
       >
         <Form.Item label="Họ và tên" name="name">
-          <Input />
+          <Input disabled />
         </Form.Item>
 
         <Form.Item label="Email" name="email">
@@ -27,15 +39,15 @@ export const UserEdit = () => {
         </Form.Item>
 
         <Form.Item label="Số điện thoại" name="phone">
-          <Input />
+          <Input disabled />
         </Form.Item>
 
         <Form.Item label="Ngày sinh" name="date">
-          <DatePicker format="YYYY-MM-DD" />
+          <DatePicker format="YYYY-MM-DD" style={{ width: "100%" }} disabled />
         </Form.Item>
 
         <Form.Item label="Giới tính" name="sex">
-          <Select>
+          <Select disabled>
             <Select.Option value="1">Nam</Select.Option>
             <Select.Option value="0">Nữ</Select.Option>
           </Select>
@@ -44,7 +56,6 @@ export const UserEdit = () => {
         <Form.Item label="Vai trò" name="role">
           <Select>
             <Select.Option value="1">Khách hàng</Select.Option>
-            <Select.Option value="2">Người bán</Select.Option>
             <Select.Option value="3">Quản trị viên</Select.Option>
           </Select>
         </Form.Item>
