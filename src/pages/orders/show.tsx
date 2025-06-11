@@ -1,8 +1,9 @@
 import { Show } from "@refinedev/antd";
 import { useShow } from "@refinedev/core";
+import { useParams } from "react-router-dom";
 import { Typography, Descriptions, Tag, Image } from "antd";
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status:any) => {
   switch (status) {
     case "Chờ xác nhận":
       return "orange";
@@ -31,13 +32,20 @@ const getStatusColor = (status: string) => {
 };
 
 export const OrderShow = () => {
+  const { id } = useParams(); // Lấy id từ URL
   const { queryResult } = useShow({
     resource: "orders",
+    id, // Truyền id từ URL
   });
 
-  const { data, isLoading } = queryResult;
-  const record = data?.data?.orders?.[0];
-  console.log("🚀 ~ OrderShow ~ record:", record);
+  const { data, isLoading, error } = queryResult;
+  console.log("🚀 ~ Query Result Data:", data);
+  console.log("🚀 ~ Query Result Error:", error);
+  console.log("🚀 ~ Record Data:", data?.data);
+
+  // Lấy phần tử cụ thể từ mảng data.data.data dựa trên id
+  const record = data?.data?.data?.find((item:any) => item._id === id) || data?.data?.data?.[0];
+  console.log("🚀 ~ Processed Record:", record);
 
   return (
     <Show isLoading={isLoading}>
@@ -72,7 +80,7 @@ export const OrderShow = () => {
           {new Date(record?.createdAt).toLocaleString()}
         </Descriptions.Item>
         <Descriptions.Item label="Danh sách sản phẩm">
-          {record?.items?.map((item: any, index: number) => (
+          {record?.items?.map((item:any , index:any) => (
             <div key={index} style={{ marginBottom: 16 }}>
               <Typography.Text strong>{item.productName}</Typography.Text>
               <br />

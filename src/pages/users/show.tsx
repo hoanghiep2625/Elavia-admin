@@ -1,11 +1,13 @@
 import { Show } from "@refinedev/antd";
-import { Descriptions, Tag, Typography } from "antd";
+import { Descriptions, Tag, Table } from "antd";
 import { useShow } from "@refinedev/core";
 
 export const UserShow = () => {
   const { queryResult } = useShow();
   const { data, isLoading } = queryResult;
   const record = data?.data;
+
+  const addresses = record?.shipping_addresses || [];
 
   return (
     <Show isLoading={isLoading}>
@@ -47,22 +49,33 @@ export const UserShow = () => {
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="Địa chỉ mặc định">
-          {record?.shipping_addresses?.find((a: any) => a.isDefault)?.address},{" "}
-          {
-            record?.shipping_addresses?.find((a: any) => a.isDefault)?.commune
-              ?.name
-          }
-          ,{" "}
-          {
-            record?.shipping_addresses?.find((a: any) => a.isDefault)?.district
-              ?.name
-          }
-          ,{" "}
-          {
-            record?.shipping_addresses?.find((a: any) => a.isDefault)?.city
-              ?.name
-          }
+        <Descriptions.Item label="Địa chỉ giao hàng">
+          <Table
+            dataSource={addresses}
+            rowKey={(addr) => addr._id}
+            pagination={false}
+            bordered
+            size="small"
+          >
+            <Table.Column title="Người nhận" dataIndex="receiver_name" />
+            <Table.Column title="Số điện thoại" dataIndex="phone" />
+            <Table.Column
+              title="Địa chỉ"
+              render={(_, addr: any) =>
+                `${addr.address}, ${addr.commune?.name || ""}, ${addr.district?.name || ""}, ${addr.city?.name || ""}`
+              }
+            />
+            <Table.Column
+              title="Mặc định"
+              render={(_, addr: any) =>
+                addr.isDefault ? (
+                  <Tag color="green">Mặc định</Tag>
+                ) : (
+                  "-"
+                )
+              }
+            />
+          </Table>
         </Descriptions.Item>
       </Descriptions>
     </Show>
