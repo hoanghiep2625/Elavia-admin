@@ -71,7 +71,7 @@ export const ProductVariantList = () => {
   };
 
   return (
-    <List>
+    <List canCreate={false}>
       <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
         <Input
           placeholder="Tên sản phẩm"

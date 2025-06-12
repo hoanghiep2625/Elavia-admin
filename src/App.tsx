@@ -50,6 +50,7 @@ export const customDataProvider = simpleRestProvider(
   `${import.meta.env.VITE_API_URL}/admin`,
   axiosInstance
 );
+
 function App() {
   return (
     <BrowserRouter>
@@ -158,7 +159,7 @@ function App() {
                     </Route>
                     <Route path="/variants">
                       <Route index element={<ProductVariantList />} />
-                      <Route path="create" element={<ProductVariantCreate />} />
+                      <Route path="create/:id" element={<ProductVariantCreate />} />
                       <Route path="edit/:id" element={<ProductVariantEdit />} />
                       <Route path="show/:id" element={<ProductVariantShow />} />
                     </Route>

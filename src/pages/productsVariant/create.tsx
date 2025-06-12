@@ -1,4 +1,4 @@
-import { Create, useForm, useSelect } from "@refinedev/antd";
+import { Create } from "@refinedev/antd";
 import {
   Button,
   Form,
@@ -12,28 +12,20 @@ import {
   message,
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { UploadFile } from "antd/lib/upload/interface";
-
-// Define interfaces for your data types
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-}
+import { useParams } from "react-router";
 
 interface Size {
   size: string;
   stock: number;
 }
-
 interface Color {
   baseColor: string;
   actualColor: string;
   colorName: string;
 }
-
 interface FormValues {
   productId: string;
   sku: string;
@@ -41,41 +33,46 @@ interface FormValues {
   color: Color;
   sizes: Size[];
 }
-interface ProductApiResponse {
-  data: {
-    data: Product[];
-  };
-}
+
 export const ProductVariantCreate = () => {
   const [form] = Form.useForm<FormValues>();
-
-  const { selectProps: productSelectProps, queryResult } = useSelect<Product>({
-    resource: "products",
-    optionLabel: "name",
-    optionValue: "_id",
-    meta: {
-      select: (rawData: ProductApiResponse) => rawData.data.data,
-    },
-  });
-
-  const products =
-    (queryResult?.data?.data as ProductApiResponse["data"] | undefined)?.data ||
-    [];
+  const { id } = useParams(); // id là productId
+  const [productName, setProductName] = useState<string>("");
   const [mainImage, setMainImage] = useState<UploadFile[]>([]);
   const [hoverImage, setHoverImage] = useState<UploadFile[]>([]);
   const [productImages, setProductImages] = useState<UploadFile[]>([]);
+  const [productSku, setSku] = useState<string>("");
+
+
+  // Lấy tên sản phẩm theo id
+  useEffect(() => {
+    if (!id) return;
+    axios
+      .get(`${import.meta.env.VITE_API_URL}/admin/products/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      .then((res) => {
+        setProductName(res.data.name);
+        setSku(res.data.sku || "");
+        // Set SKU vào form
+        form.setFieldsValue({ sku: res.data.sku || "" });
+      })
+      .catch(() => setProductName("Không tìm thấy sản phẩm"));
+  }, [id, form]);
 
   const handleSubmit = async (values: FormValues) => {
     try {
       const formData = new FormData();
 
-      formData.append("productId", values.productId);
+      formData.append("productId", id || "");
       formData.append("sku", values.sku);
       formData.append("price", values.price.toString());
-
       formData.append("color.baseColor", values.color.baseColor);
       formData.append("color.actualColor", values.color.actualColor);
       formData.append("color.colorName", values.color.colorName);
+
       values.sizes.forEach((sizeObj: Size, i: number) => {
         formData.append(`sizes[${i}][size]`, sizeObj.size);
         formData.append(`sizes[${i}][stock]`, sizeObj.stock.toString());
@@ -84,11 +81,9 @@ export const ProductVariantCreate = () => {
       if (mainImage[0]?.originFileObj) {
         formData.append("mainImage", mainImage[0].originFileObj);
       }
-
       if (hoverImage[0]?.originFileObj) {
         formData.append("hoverImage", hoverImage[0].originFileObj);
       }
-
       productImages.forEach((file: UploadFile) => {
         if (file.originFileObj) {
           formData.append("productImages", file.originFileObj);
@@ -107,6 +102,10 @@ export const ProductVariantCreate = () => {
       );
 
       message.success("Tạo variant thành công!");
+      form.resetFields();
+      setMainImage([]);
+      setHoverImage([]);
+      setProductImages([]);
     } catch (err) {
       message.error("Lỗi khi tạo variant!");
       console.error(err);
@@ -136,33 +135,17 @@ export const ProductVariantCreate = () => {
         >
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item
-                label="Sản phẩm"
-                name="productId"
-                rules={[{ required: true, message: "Vui lòng chọn sản phẩm" }]}
-              >
-                <Select
-                  loading={queryResult?.isLoading}
-                  placeholder="Chọn sản phẩm"
-                  onChange={(value) => {
-                    const selectedProduct = products.find(
-                      (p) => p._id === value
-                    );
-                    if (selectedProduct) {
-                      form.setFieldsValue({ sku: selectedProduct.sku });
-                    }
-                  }}
-                >
-                  {products.map((product: Product) => (
-                    <Select.Option key={product._id} value={product._id}>
-                      {product.sku} - {product.name}
-                    </Select.Option>
-                  ))}
-                </Select>
+              <Form.Item label="Sản phẩm">
+                <Input value={productName} disabled />
               </Form.Item>
-
-              <Form.Item name="sku" hidden>
+              <Form.Item name="productId" initialValue={id} hidden>
                 <Input />
+              </Form.Item>
+              <Form.Item
+                label="SKU"
+                name="sku"
+              >
+                <Input value={productSku} disabled />
               </Form.Item>
               <Form.Item
                 label="Giá"
@@ -172,7 +155,6 @@ export const ProductVariantCreate = () => {
                 <InputNumber min={0} style={{ width: "100%" }} />
               </Form.Item>
             </Col>
-
             <Col span={12}>
               <Form.Item
                 label="Tên màu"
@@ -222,6 +204,7 @@ export const ProductVariantCreate = () => {
                   maxCount={1}
                   beforeUpload={() => false}
                   onChange={(info) => setMainImage(info.fileList)}
+                  fileList={mainImage}
                 >
                   <Button icon={<UploadOutlined />}>Tải lên</Button>
                 </Upload>
@@ -234,6 +217,7 @@ export const ProductVariantCreate = () => {
                   maxCount={1}
                   beforeUpload={() => false}
                   onChange={(info) => setHoverImage(info.fileList)}
+                  fileList={hoverImage}
                 >
                   <Button icon={<UploadOutlined />}>Tải lên</Button>
                 </Upload>
@@ -246,6 +230,7 @@ export const ProductVariantCreate = () => {
                   multiple
                   beforeUpload={() => false}
                   onChange={(info) => setProductImages(info.fileList)}
+                  fileList={productImages}
                 >
                   <Button icon={<UploadOutlined />}>Tải lên</Button>
                 </Upload>
@@ -259,7 +244,6 @@ export const ProductVariantCreate = () => {
               <Col span={6}>Size</Col>
               <Col span={18}>Số lượng</Col>
             </Row>
-
             {["S", "M", "L", "XL", "XXL"].map((size, index) => (
               <Row
                 gutter={16}
