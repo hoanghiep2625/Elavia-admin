@@ -119,7 +119,7 @@ export const ProductList = () => {
                 size="small"
                 type="primary"
                 onClick={() => {
-                  window.location.href = `/products/${record._id}/variants/create`;
+                  window.location.href = `/variants/create/${record._id}`;
                 }}
               >
                 Thêm biến thể
