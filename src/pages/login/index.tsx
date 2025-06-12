@@ -37,16 +37,14 @@ export const Login = () => {
         >
           {/* Logo IvyModa hoặc tên hệ thống */}
           <img
-            src=""
+            src="/logo.png"
             alt="Elavia Logo"
             style={{ width: "120px", margin: "0 auto" }}
           />
 
-          <Title level={3} style={{ marginBottom: 0 }}>
+          <Title level={5} style={{ marginBottom: 0 }}>
             Admin Login
           </Title>
-          <Text type="secondary">Please enter your credentials</Text>
-
           <Form
             layout="vertical"
             onFinish={onFinish}
