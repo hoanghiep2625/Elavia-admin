@@ -80,9 +80,24 @@ export const CategoryList = () => {
       title: "Tên danh mục",
       dataIndex: "name",
       key: "name",
-      render: (_: any, record: any) => (
-        <span style={{ paddingLeft: record.level * 24 }}>{record.name}</span>
-      ),
+      render: (_: any, record: any) => {
+        let prefix = "";
+        if (record.level === 1) prefix = "- ";
+        if (record.level === 2) prefix = "-- ";
+        return (
+          <span style={{ paddingLeft: record.level * 24 }}>
+            {prefix}{record.name}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Cấp",
+      dataIndex: "level",
+      key: "level",
+      width: 60,
+      align: "center" as const,
+      render: (_: any, record: any) => <span>{(record.level ?? 0) + 1}</span>,
     },
     {
       title: "Danh mục cha",
