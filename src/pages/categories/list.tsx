@@ -86,7 +86,8 @@ export const CategoryList = () => {
         if (record.level === 2) prefix = "-- ";
         return (
           <span style={{ paddingLeft: record.level * 24 }}>
-            {prefix}{record.name}
+            {prefix}
+            {record.name}
           </span>
         );
       },
