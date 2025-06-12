@@ -3,7 +3,7 @@ import { useShow } from "@refinedev/core";
 import { useParams } from "react-router-dom";
 import { Typography, Descriptions, Tag, Image } from "antd";
 
-const getStatusColor = (status:any) => {
+const getStatusColor = (status: any) => {
   switch (status) {
     case "Chờ xác nhận":
       return "orange";
@@ -26,26 +26,20 @@ const getStatusColor = (status:any) => {
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
     default:
-      console.warn("Trạng thái không xác định:", status);
       return "default";
   }
 };
 
 export const OrderShow = () => {
-  const { id } = useParams(); // Lấy id từ URL
+  const { id } = useParams();
   const { queryResult } = useShow({
     resource: "orders",
-    id, // Truyền id từ URL
+    id,
   });
 
-  const { data, isLoading, error } = queryResult;
-  console.log("🚀 ~ Query Result Data:", data);
-  console.log("🚀 ~ Query Result Error:", error);
-  console.log("🚀 ~ Record Data:", data?.data);
-
-  // Lấy phần tử cụ thể từ mảng data.data.data dựa trên id
-  const record = data?.data?.data?.find((item:any) => item._id === id) || data?.data?.data?.[0];
-  console.log("🚀 ~ Processed Record:", record);
+  const { data, isLoading } = queryResult;
+  // Lấy trực tiếp object đơn hàng
+  const record = data?.data;
 
   return (
     <Show isLoading={isLoading}>
@@ -77,10 +71,10 @@ export const OrderShow = () => {
           {record?.totalAmount?.toLocaleString()}đ
         </Descriptions.Item>
         <Descriptions.Item label="Ngày tạo">
-          {new Date(record?.createdAt).toLocaleString()}
+          {record?.createdAt ? new Date(record.createdAt).toLocaleString() : ""}
         </Descriptions.Item>
         <Descriptions.Item label="Danh sách sản phẩm">
-          {record?.items?.map((item:any , index:any) => (
+          {record?.items?.map((item: any, index: any) => (
             <div key={index} style={{ marginBottom: 16 }}>
               <Typography.Text strong>{item.productName}</Typography.Text>
               <br />
