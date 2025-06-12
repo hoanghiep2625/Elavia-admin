@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { List, DateField, ShowButton } from "@refinedev/antd";
+import { List, DateField, ShowButton, EditButton } from "@refinedev/antd";
 import { Table, Tag, Input, Select, Button } from "antd";
 import { useCustom } from "@refinedev/core";
 
@@ -232,7 +232,8 @@ export const OrderList = () => {
           title="Thao tác"
           render={(_, record: any) => (
             <span style={{ display: "flex", gap: 8 }}>
-              <ShowButton hideText recordItemId={record._id} />
+              <ShowButton hideText size="small" recordItemId={record._id} />
+               <EditButton hideText size="small" recordItemId={record._id} />
             </span>
           )}
         />
