@@ -11,11 +11,14 @@ import {
   Card,
   message,
 } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { UploadFile } from "antd/lib/upload/interface";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
+import { useForm } from "@refinedev/antd";
+import { time } from "console";
+import form from "antd/es/form";
 
 interface Size {
   size: string;
@@ -35,14 +38,17 @@ interface FormValues {
 }
 
 export const ProductVariantCreate = () => {
-  const [form] = Form.useForm<FormValues>();
-  const { id } = useParams(); // id là productId
+  const { id } = useParams();
   const [productName, setProductName] = useState<string>("");
   const [mainImage, setMainImage] = useState<UploadFile[]>([]);
   const [hoverImage, setHoverImage] = useState<UploadFile[]>([]);
   const [productImages, setProductImages] = useState<UploadFile[]>([]);
   const [productSku, setSku] = useState<string>("");
+  const navigate = useNavigate();
 
+  const { formProps, saveButtonProps } = useForm<FormValues>({
+    resource: "product-variants",
+  });
 
   // Lấy tên sản phẩm theo id
   useEffect(() => {
@@ -56,11 +62,10 @@ export const ProductVariantCreate = () => {
       .then((res) => {
         setProductName(res.data.name);
         setSku(res.data.sku || "");
-        // Set SKU vào form
-        form.setFieldsValue({ sku: res.data.sku || "" });
+        formProps.form?.setFieldsValue({ sku: res.data.sku || "" });
       })
       .catch(() => setProductName("Không tìm thấy sản phẩm"));
-  }, [id, form]);
+  }, [id, formProps.form]);
 
   const handleSubmit = async (values: FormValues) => {
     try {
@@ -102,7 +107,7 @@ export const ProductVariantCreate = () => {
       );
 
       message.success("Tạo variant thành công!");
-      form.resetFields();
+      formProps.form?.resetFields();
       setMainImage([]);
       setHoverImage([]);
       setProductImages([]);
@@ -111,17 +116,26 @@ export const ProductVariantCreate = () => {
       console.error(err);
     }
   };
-
   return (
-    <Create>
+    <Create goBack={false} saveButtonProps={saveButtonProps}>
       <Card
-        title="Tạo mới Sản phẩm Variant"
+        title={
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate("/products")}
+              style={{ marginRight: 8 }}
+            />
+            Tạo mới Sản phẩm Variant
+          </span>
+        }
         bordered
         style={{ margin: "16px" }}
       >
-        <Form
+        <Form<FormValues>
+          {...formProps}
           layout="vertical"
-          form={form}
           onFinish={handleSubmit}
           initialValues={{
             sizes: ["S", "M", "L", "XL", "XXL"].map((size) => ({
@@ -282,11 +296,11 @@ export const ProductVariantCreate = () => {
             ))}
           </Card>
 
-          <Form.Item style={{ marginTop: 16 }}>
+          {/* <Form.Item style={{ marginTop: 16 }}>
             <Button type="primary" htmlType="submit">
               Tạo sản phẩm
             </Button>
-          </Form.Item>
+          </Form.Item> */}
         </Form>
       </Card>
     </Create>
