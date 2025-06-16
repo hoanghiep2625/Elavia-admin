@@ -48,7 +48,13 @@ export const ProductVariantCreate = () => {
 
   const { formProps, saveButtonProps } = useForm<FormValues>({
     resource: "product-variants",
-  });
+  }) as {
+    formProps: {
+      form?: import("antd").FormInstance<FormValues>;
+      [key: string]: any;
+    };
+    saveButtonProps: any;
+  };
 
   // Lấy tên sản phẩm theo id
   useEffect(() => {
