@@ -32,11 +32,19 @@ export const ProductVariantList = () => {
         _limit: pagination.pageSize,
         _sort: sorter.field,
         _order: sorter.order,
-        ...((filters._priceMin && filters._priceMin !== "") ? { _priceMin: filters._priceMin } : {}),
-        ...((filters._priceMax && filters._priceMax !== "") ? { _priceMax: filters._priceMax } : {}),
-        ...((filters._baseColors && filters._baseColors !== "") ? { _baseColors: filters._baseColors } : {}),
-        ...((filters._name && filters._name !== "") ? { _name: filters._name } : {}),
-        ...((filters._sku && filters._sku !== "") ? { _sku: filters._sku } : {}),
+        ...(filters._priceMin && filters._priceMin !== ""
+          ? { _priceMin: filters._priceMin }
+          : {}),
+        ...(filters._priceMax && filters._priceMax !== ""
+          ? { _priceMax: filters._priceMax }
+          : {}),
+        ...(filters._baseColors && filters._baseColors !== ""
+          ? { _baseColors: filters._baseColors }
+          : {}),
+        ...(filters._name && filters._name !== ""
+          ? { _name: filters._name }
+          : {}),
+        ...(filters._sku && filters._sku !== "" ? { _sku: filters._sku } : {}),
       },
     },
   });
@@ -51,7 +59,9 @@ export const ProductVariantList = () => {
     });
     if (sorterConfig && sorterConfig.field) {
       setSorter({
-        field: Array.isArray(sorterConfig.field) ? sorterConfig.field.join('.') : sorterConfig.field,
+        field: Array.isArray(sorterConfig.field)
+          ? sorterConfig.field.join(".")
+          : sorterConfig.field,
         order: sorterConfig.order === "ascend" ? "asc" : "desc",
       });
     } else {
@@ -146,6 +156,15 @@ export const ProductVariantList = () => {
           onChange={handleTableChange}
         >
           <Table.Column
+            title="STT"
+            key="stt"
+            align="center"
+            width={60}
+            render={(_, __, index) =>
+              (pagination.current - 1) * pagination.pageSize + index + 1
+            }
+          />
+          <Table.Column
             dataIndex={["productId", "name"]}
             title="Sản phẩm"
             sorter={true}
@@ -194,7 +213,12 @@ export const ProductVariantList = () => {
               <Space>
                 <EditButton hideText size="small" recordItemId={record._id} />
                 <ShowButton hideText size="small" recordItemId={record._id} />
-                <DeleteButton hideText size="small" recordItemId={record._id} onSuccess={() => refetch()}/>
+                <DeleteButton
+                  hideText
+                  size="small"
+                  recordItemId={record._id}
+                  onSuccess={() => refetch()}
+                />
               </Space>
             )}
           />

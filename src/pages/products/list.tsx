@@ -99,6 +99,15 @@ export const ProductList = () => {
         }}
         onChange={handleTableChange}
       >
+        <Table.Column
+          title="STT"
+          key="stt"
+          align="center"
+          width={60}
+          render={(_, __, index) =>
+            (pagination.current - 1) * pagination.pageSize + index + 1
+          }
+        />
         <Table.Column dataIndex="name" title="Tên sản phẩm" sorter={true} />
         <Table.Column dataIndex="sku" title="SKU" sorter={true} />
         <Table.Column
@@ -114,7 +123,12 @@ export const ProductList = () => {
             <Space>
               <EditButton hideText size="small" recordItemId={record._id} />
               <ShowButton hideText size="small" recordItemId={record._id} />
-              <DeleteButton hideText size="small" recordItemId={record._id} onSuccess={() => refetch()}/>
+              <DeleteButton
+                hideText
+                size="small"
+                recordItemId={record._id}
+                onSuccess={() => refetch()}
+              />
               <Button
                 size="small"
                 type="primary"

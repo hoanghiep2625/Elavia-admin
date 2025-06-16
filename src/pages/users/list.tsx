@@ -105,6 +105,15 @@ export const UserList = () => {
         }}
         onChange={handleTableChange}
       >
+        <Table.Column
+          title="STT"
+          key="stt"
+          align="center"
+          width={60}
+          render={(_, __, index) =>
+            (pagination.current - 1) * pagination.pageSize + index + 1
+          }
+        />
         <Table.Column dataIndex="email" title="Email" sorter={true} />
 
         <Table.Column title="SĐT" sorter={true} dataIndex={"phone"} />
