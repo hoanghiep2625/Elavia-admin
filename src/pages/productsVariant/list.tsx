@@ -23,7 +23,7 @@ export const ProductVariantList = () => {
     _sku?: string;
   }>({});
 
-  const { data, isLoading, isError } = useCustom({
+  const { data, isLoading, isError, refetch } = useCustom({
     url: "/admin/variants",
     method: "get",
     config: {
@@ -194,7 +194,7 @@ export const ProductVariantList = () => {
               <Space>
                 <EditButton hideText size="small" recordItemId={record._id} />
                 <ShowButton hideText size="small" recordItemId={record._id} />
-                <DeleteButton hideText size="small" recordItemId={record._id} />
+                <DeleteButton hideText size="small" recordItemId={record._id} onSuccess={() => refetch()}/>
               </Space>
             )}
           />

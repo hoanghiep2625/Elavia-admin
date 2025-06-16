@@ -19,7 +19,7 @@ export const ProductList = () => {
     setPagination((prev) => ({ ...prev, current: 1 }));
   }, [filters]);
 
-  const { data, isLoading } = useCustom({
+  const { data, isLoading, refetch } = useCustom({
     url: "/admin/products",
     method: "get",
     config: {
@@ -114,7 +114,7 @@ export const ProductList = () => {
             <Space>
               <EditButton hideText size="small" recordItemId={record._id} />
               <ShowButton hideText size="small" recordItemId={record._id} />
-              <DeleteButton hideText size="small" recordItemId={record._id} />
+              <DeleteButton hideText size="small" recordItemId={record._id} onSuccess={() => refetch()}/>
               <Button
                 size="small"
                 type="primary"
