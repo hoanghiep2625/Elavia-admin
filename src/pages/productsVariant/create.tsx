@@ -107,6 +107,7 @@ export const ProductVariantCreate = () => {
       );
 
       message.success("Tạo variant thành công!");
+      navigate(`/variants`);
       formProps.form?.resetFields();
       setMainImage([]);
       setHoverImage([]);
@@ -155,10 +156,7 @@ export const ProductVariantCreate = () => {
               <Form.Item name="productId" initialValue={id} hidden>
                 <Input />
               </Form.Item>
-              <Form.Item
-                label="SKU"
-                name="sku"
-              >
+              <Form.Item label="SKU" name="sku">
                 <Input value={productSku} disabled />
               </Form.Item>
               <Form.Item
