@@ -83,16 +83,6 @@ function App() {
                     },
                   },
                   {
-                    name: "products",
-                    list: "/products",
-                    create: "/products/create",
-                    edit: "/products/edit/:id",
-                    show: "/products/show/:id",
-                    meta: {
-                      canDelete: true,
-                    },
-                  },
-                  {
                     name: "variants",
                     list: "/variants",
                     create: "/variants/create",
@@ -102,6 +92,17 @@ function App() {
                       canDelete: true,
                     },
                   },
+                  {
+                    name: "products",
+                    list: "/products",
+                    create: "/products/create",
+                    edit: "/products/edit/:id",
+                    show: "/products/show/:id",
+                    meta: {
+                      canDelete: true,
+                    },
+                  },
+
                   {
                     name: "orders",
                     list: "/orders",

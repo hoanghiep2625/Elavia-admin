@@ -244,12 +244,12 @@ export const ProductVariantList = () => {
         >
           <Table.Column
             title="STT"
-            key="stt"
+            key="index"
             align="center"
-            width={60}
             render={(_, __, index) =>
-              (pagination.current - 1) * pagination.pageSize + index + 1
+              pagination.pageSize * (pagination.current - 1) + index + 1
             }
+            width={70}
           />
           <Table.Column
             dataIndex={["productId", "name"]}
@@ -338,9 +338,39 @@ export const ProductVariantList = () => {
             }}
           />
           <Table.Column
+            align="center"
+            title="Tồn kho"
+            sorter={false}
+            render={(_, record) => {
+              const totalStock = Array.isArray(record.sizes)
+                ? record.sizes.reduce((sum, size) => sum + (size.stock || 0), 0)
+                : 0;
+              return totalStock;
+            }}
+          />
+          <Table.Column
             dataIndex={["images", "main", "url"]}
             title="Ảnh chính"
             render={(value) => <Image src={value} width={50} />}
+          />
+
+          <Table.Column
+            dataIndex="createdAt"
+            title="Ngày tạo"
+            width={120}
+            sorter={true}
+            render={(value) =>
+              value
+                ? new Date(value).toLocaleString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })
+                : ""
+            }
           />
           <Table.Column
             title="Hành động"
