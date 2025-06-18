@@ -116,9 +116,11 @@ export const ProductList = () => {
           sorter={true}
           render={(value) => value || "Không xác định"}
         />
+
         <Table.Column
           title="Hành động"
           dataIndex="actions"
+          width={200}
           render={(_, record: BaseRecord) => (
             <Space>
               <EditButton hideText size="small" recordItemId={record._id} />

@@ -104,7 +104,15 @@ export const OrderList = () => {
 
   return (
     <List>
-      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <Input
           placeholder="Mã đơn hàng"
           allowClear
@@ -159,6 +167,7 @@ export const OrderList = () => {
       >
         <Table.Column
           title="STT"
+          align="center"
           render={(_, __, index) =>
             (pagination.current - 1) * pagination.pageSize + index + 1
           }
@@ -233,7 +242,7 @@ export const OrderList = () => {
           render={(_, record: any) => (
             <span style={{ display: "flex", gap: 8 }}>
               <ShowButton hideText size="small" recordItemId={record._id} />
-               <EditButton hideText size="small" recordItemId={record._id} />
+              <EditButton hideText size="small" recordItemId={record._id} />
             </span>
           )}
         />

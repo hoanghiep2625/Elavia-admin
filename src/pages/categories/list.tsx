@@ -75,13 +75,38 @@ export const CategoryList = () => {
     return data;
   }, [categories, search]);
 
+  function flattenCategories(
+    categories: any[],
+    parentId: string | null = null,
+    level = 0,
+    parentIndexPath: string[] = []
+  ): any[] {
+    return categories
+      .filter((cat) => cat.parentId === parentId)
+      .map((cat, i) => {
+        const currentIndexPath = [...parentIndexPath, (i + 1).toString()];
+        return [
+          {
+            ...cat,
+            level,
+            indexPath: currentIndexPath.join("."),
+          },
+          ...flattenCategories(
+            categories,
+            cat._id,
+            level + 1,
+            currentIndexPath
+          ),
+        ];
+      })
+      .flat();
+  }
   const columns = [
     {
       title: "STT",
       key: "stt",
+      dataIndex: "indexPath",
       width: 60,
-      align: "center" as const,
-      render: (_: any, __: any, index: number) => index + 1,
     },
     {
       title: "Tên danh mục",
@@ -98,12 +123,13 @@ export const CategoryList = () => {
           </span>
         );
       },
+      width: 500,
     },
     {
       title: "Cấp",
       dataIndex: "level",
       key: "level",
-      width: 60,
+      width: 120,
       align: "center" as const,
       render: (_: any, record: any) => <span>{(record.level ?? 0) + 1}</span>,
     },
@@ -111,6 +137,7 @@ export const CategoryList = () => {
       title: "Danh mục cha",
       dataIndex: "parentId",
       key: "parent",
+      width: 120,
       render: (_: any, record: any) => getParentPath(record, categories),
     },
     {
