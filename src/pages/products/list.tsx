@@ -1,8 +1,8 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
-import type { BaseRecord } from "@refinedev/core";
-import { Button, Input, Space, Table } from "antd";
-import { useState, useEffect } from "react";
-import { useCustom } from "@refinedev/core";
+import { BaseRecord, useCustom, useCustomMutation, useNotification } from "@refinedev/core";
+import { Button, Input, Space, Table, Modal } from "antd";
+import type { TableRowSelection } from "antd/es/table/interface";
+import { useEffect, useState } from "react";
 
 export const ProductList = () => {
   const [pagination, setPagination] = useState({
@@ -13,6 +13,7 @@ export const ProductList = () => {
   const [nameSearch, setNameSearch] = useState("");
   const [skuSearch, setSkuSearch] = useState("");
   const [filters, setFilters] = useState({ _name: "", _sku: "" });
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // Trigger search when filters change
   useEffect(() => {
@@ -33,6 +34,9 @@ export const ProductList = () => {
       },
     },
   });
+
+  const { mutate: bulkDelete } = useCustomMutation();
+  const { open } = useNotification();
 
   const tableData = data?.data?.data ?? [];
   const total = data?.data?.total ?? 0;
@@ -65,6 +69,45 @@ export const ProductList = () => {
     });
   };
 
+  const handleBulkDelete = () => {
+    Modal.confirm({
+      title: 'Xác nhận xoá',
+      content: `Bạn có chắc chắn muốn xoá ${selectedRowKeys.length} sản phẩm đã chọn?`,
+      okText: 'Xoá',
+      cancelText: 'Huỷ',
+      onOk: async () => {
+        try {
+          await bulkDelete({
+            url: '/admin/products/bulk-delete',
+            method: 'delete',
+            values: {
+              ids: selectedRowKeys
+            },
+          });
+          
+          setSelectedRowKeys([]);
+          refetch();
+          open?.({
+            type: 'success',
+            message: "",
+          });
+        } catch (error) {
+          open?.({
+            type: 'error',
+            message: 'Có lỗi xảy ra',
+          });
+        }
+      },
+    });
+  };
+
+  const rowSelection: TableRowSelection<any> = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(newSelectedRowKeys);
+    },
+  };
+
   return (
     <List>
       <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
@@ -86,7 +129,20 @@ export const ProductList = () => {
           Tìm kiếm
         </Button>
       </div>
+
+      {selectedRowKeys.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <span style={{ marginRight: 8 }}>
+            Đã chọn {selectedRowKeys.length} sản phẩm
+          </span>
+          <Button danger onClick={handleBulkDelete}>
+            Xoá đã chọn
+          </Button>
+        </div>
+      )}
+
       <Table
+        rowSelection={rowSelection}
         dataSource={Array.isArray(tableData) ? tableData : []}
         rowKey="_id"
         loading={isLoading}
@@ -136,7 +192,7 @@ export const ProductList = () => {
                   window.location.href = `/variants/create/${record._id}`;
                 }}
               >
-                Thêm biến thể
+                Thêm biến thể ({record.variantCount || 0})
               </Button>
             </Space>
           )}

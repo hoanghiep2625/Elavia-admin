@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Create, useForm, useTable } from "@refinedev/antd";
-import { Form, Input, TreeSelect } from "antd";
+import { Button, Col, Form, Input, Row, TreeSelect, Upload } from "antd";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { UploadOutlined } from "@ant-design/icons";
 
 // Hàm tạo SKU ngẫu nhiên cho sản phẩm
 const generateSKU = () => {

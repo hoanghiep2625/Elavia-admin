@@ -29,6 +29,26 @@ function flattenCategories(
     ]);
 }
 
+// Hàm đệ quy tạo số thứ tự phân cấp
+function flattenCategoriesWithIndex(
+  categories: any[],
+  parentId: string | null = null,
+  level = 0,
+  parentIndex: number[] = []
+): any[] {
+  let result: any[] = [];
+  const children = categories.filter((cat) => cat.parentId === parentId);
+  children.forEach((cat, idx) => {
+    const currentIndex = [...parentIndex, idx + 1];
+    const stt = currentIndex.join(".");
+    result.push({ ...cat, level, stt });
+    result = result.concat(
+      flattenCategoriesWithIndex(categories, cat._id, level + 1, currentIndex)
+    );
+  });
+  return result;
+}
+
 // Lấy đường dẫn cha (không bao gồm chính nó)
 function getParentPath(cat: any, categories: any[]): string {
   const path = [];
@@ -59,7 +79,7 @@ export const CategoryList = () => {
   }, [tableProps?.dataSource]);
 
   const filteredCategories = useMemo(() => {
-    let data = flattenCategories(categories);
+    let data = flattenCategoriesWithIndex(categories);
     if (search) {
       const keyword = removeVietnameseTones(search.toLowerCase());
       data = data.filter((cat) =>
@@ -79,9 +99,10 @@ export const CategoryList = () => {
     {
       title: "STT",
       key: "stt",
-      width: 60,
+      width: 80,
       align: "center" as const,
-      render: (_: any, __: any, index: number) => index + 1,
+      dataIndex: "stt",
+      render: (stt: string) => <span>{stt}</span>,
     },
     {
       title: "Tên danh mục",
