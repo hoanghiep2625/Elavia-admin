@@ -1,7 +1,6 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
 import { BaseRecord, useCustom } from "@refinedev/core";
-
-import { Space, Table, Image, Input, Button, Select } from "antd";
+import { Space, Table, Image, Input, Button, Select, Tag } from "antd";
 import { useState } from "react";
 
 export const ProductVariantList = () => {
@@ -213,11 +212,20 @@ export const ProductVariantList = () => {
             }}
           />
           <Table.Column
+            dataIndex="status"
+            title="Trạng thái"
+            sorter={true}
+            render={(status) => (
+              <Tag color={status ? "green" : "red"}>
+                {status ? "Active" : "Inactive"}
+              </Tag>
+            )}
+          />
+          <Table.Column
             dataIndex={["images", "main", "url"]}
             title="Ảnh chính"
             render={(value) => <Image src={value} width={50} />}
           />
-
           <Table.Column
             dataIndex="createdAt"
             title="Ngày tạo"

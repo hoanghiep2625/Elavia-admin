@@ -10,15 +10,14 @@ import {
   Col,
   Card,
   message,
+  Switch,
 } from "antd";
 import { UploadOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { UploadFile } from "antd/lib/upload/interface";
 import { useNavigate, useParams } from "react-router";
 import { useForm } from "@refinedev/antd";
-import { time } from "console";
-import form from "antd/es/form";
+import axios from "axios";
+import { UploadFile } from "antd/lib/upload/interface";
 
 interface Size {
   size: string;
@@ -35,6 +34,7 @@ interface FormValues {
   price: number;
   color: Color;
   sizes: Size[];
+  status: string;
 }
 
 export const ProductVariantCreate = () => {
@@ -56,7 +56,6 @@ export const ProductVariantCreate = () => {
     saveButtonProps: any;
   };
 
-  // Lấy tên sản phẩm theo id
   useEffect(() => {
     if (!id) return;
     axios
@@ -83,6 +82,7 @@ export const ProductVariantCreate = () => {
       formData.append("color.baseColor", values.color.baseColor);
       formData.append("color.actualColor", values.color.actualColor);
       formData.append("color.colorName", values.color.colorName);
+      formData.append("status", values.status || "active");
 
       values.sizes.forEach((sizeObj: Size, i: number) => {
         formData.append(`sizes[${i}][size]`, sizeObj.size);
@@ -123,6 +123,7 @@ export const ProductVariantCreate = () => {
       console.error(err);
     }
   };
+
   return (
     <Create goBack={false} saveButtonProps={saveButtonProps}>
       <Card
@@ -152,6 +153,7 @@ export const ProductVariantCreate = () => {
             color: {
               actualColor: "#000000",
             },
+            status: true, // Mặc định là active
           }}
         >
           <Row gutter={16}>
@@ -171,6 +173,17 @@ export const ProductVariantCreate = () => {
                 rules={[{ required: true, message: "Vui lòng nhập giá" }]}
               >
                 <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item
+                label="Trạng thái"
+                name="status"
+                rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+              >
+                <Switch
+                  checkedChildren="Active"
+                  unCheckedChildren="Inactive"
+                  defaultChecked
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -213,7 +226,6 @@ export const ProductVariantCreate = () => {
             </Col>
           </Row>
 
-          {/* Phần tải ảnh */}
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item label="Ảnh chính" name="mainImage">
@@ -256,7 +268,6 @@ export const ProductVariantCreate = () => {
             </Col>
           </Row>
 
-          {/* Phần kích thước */}
           <Card type="inner" title="Kích thước" style={{ marginTop: 16 }}>
             <Row gutter={[16, 8]} style={{ fontWeight: 500, padding: "8px 0" }}>
               <Col span={6}>Size</Col>
@@ -299,14 +310,9 @@ export const ProductVariantCreate = () => {
               </Row>
             ))}
           </Card>
-
-          {/* <Form.Item style={{ marginTop: 16 }}>
-            <Button type="primary" htmlType="submit">
-              Tạo sản phẩm
-            </Button>
-          </Form.Item> */}
         </Form>
       </Card>
     </Create>
   );
 };
+

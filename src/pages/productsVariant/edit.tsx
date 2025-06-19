@@ -12,6 +12,7 @@ import {
   Image,
   Space,
   message,
+  Switch,
 } from "antd";
 import { UploadOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useParams } from "react-router-dom";
@@ -87,6 +88,7 @@ export const ProductVariantEdit = () => {
         },
         images: { main: mainImage, hover: hoverImage, product: productImages },
         sizes,
+        status: data.status === true || data.status === "active", // true nếu là true hoặc "active"
       });
     }
   }, [queryResult?.data?.data]);
@@ -111,25 +113,22 @@ export const ProductVariantEdit = () => {
   const handleFinish = async (values: any) => {
     const formData = new FormData();
 
-    // Thêm các trường thông thường
     formData.append("productId", values.productId);
     formData.append("sku", values.sku);
     formData.append("price", values.price);
     formData.append("color.colorName", values.color.colorName);
     formData.append("color.actualColor", values.color.actualColor);
     formData.append("color.baseColor", values.color.baseColor);
+    formData.append("status", values.status);
 
-    // Thêm ảnh chính
     if (values.images?.main?.[0]?.originFileObj) {
       formData.append("images[main]", values.images.main[0].originFileObj);
     }
 
-    // Thêm ảnh hover
     if (values.images?.hover?.[0]?.originFileObj) {
       formData.append("images[hover]", values.images.hover[0].originFileObj);
     }
 
-    // Thêm ảnh sản phẩm
     if (Array.isArray(values.images?.product)) {
       values.images.product.forEach((img: any) => {
         if (img.originFileObj) {
@@ -138,18 +137,15 @@ export const ProductVariantEdit = () => {
       });
     }
 
-    // Thêm danh sách ảnh bị xóa
     deletedPublicIds.forEach((publicId) => {
       formData.append("deletedImages[]", publicId);
     });
 
-    // Thêm sizes
     values.sizes.forEach((s: any, idx: any) => {
       formData.append(`sizes[${idx}][size]`, s.size);
       formData.append(`sizes[${idx}][stock]`, s.stock);
     });
 
-    // Log FormData để debug
     for (const [key, value] of formData.entries()) {
       console.log(`${key}:`, value);
     }
@@ -168,9 +164,7 @@ export const ProductVariantEdit = () => {
           errors: [err.message],
         }));
         formProps.form?.setFields(errors);
-        formProps.form?.validateFields().catch(() => {
-          // Validation errors are handled by the form UI
-        });
+        formProps.form?.validateFields().catch(() => {});
       }
     }
   };
@@ -186,7 +180,7 @@ export const ProductVariantEdit = () => {
                 name="productName"
                 rules={[{ required: true }]}
               >
-                <Input placeholder="Chọn sản phẩm"   disabled={true} />
+                <Input placeholder="Chọn sản phẩm" disabled={true} />
               </Form.Item>
               <Form.Item
                 label="Sản phẩm"
@@ -194,13 +188,21 @@ export const ProductVariantEdit = () => {
                 rules={[{ required: true }]}
                 hidden
               >
+                <Input />
               </Form.Item>
-              
               <Form.Item label="SKU" name="sku" rules={[{ required: true }]}>
                 <Input disabled={true} />
               </Form.Item>
               <Form.Item label="Giá" name="price" rules={[{ required: true }]}>
                 <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item
+                label="Trạng thái"
+                name="status"
+                valuePropName="checked"
+                rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+              >
+                <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -433,3 +435,4 @@ export const ProductVariantEdit = () => {
     </Edit>
   );
 };
+

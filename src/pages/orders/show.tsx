@@ -1,7 +1,18 @@
 import { Show } from "@refinedev/antd";
 import { useShow } from "@refinedev/core";
 import { useParams } from "react-router-dom";
-import { Typography, Descriptions, Tag, Image } from "antd";
+import {
+  Typography,
+  Card,
+  Descriptions,
+  Tag,
+  Divider,
+  Image,
+  Row,
+  Col,
+} from "antd";
+
+const { Text, Title } = Typography;
 
 const getStatusColor = (status: any) => {
   switch (status) {
@@ -10,7 +21,6 @@ const getStatusColor = (status: any) => {
     case "Đã xác nhận":
       return "blue";
     case "Người bán huỷ":
-      return "red";
     case "Người mua huỷ":
       return "red";
     case "Đang giao hàng":
@@ -32,65 +42,124 @@ const getStatusColor = (status: any) => {
 
 export const OrderShow = () => {
   const { id } = useParams();
-  const { queryResult } = useShow({
-    resource: "orders",
-    id,
-  });
-
+  const { queryResult } = useShow({ resource: "orders", id });
   const { data, isLoading } = queryResult;
-  // Lấy trực tiếp object đơn hàng
   const record = data?.data;
+
+  const formatCurrency = (amount: number) =>
+    `${amount?.toLocaleString()}đ`;
 
   return (
     <Show isLoading={isLoading}>
-      <Descriptions title="Thông tin đơn hàng" bordered column={1}>
-        <Descriptions.Item label="Mã đơn hàng">
-          {record?.orderId}
-        </Descriptions.Item>
-        <Descriptions.Item label="Tên khách hàng">
-          {record?.user?.name}
-        </Descriptions.Item>
-        <Descriptions.Item label="Email">
-          {record?.user?.email}
-        </Descriptions.Item>
-        <Descriptions.Item label="Số điện thoại">
-          {record?.user?.phone}
-        </Descriptions.Item>
-        <Descriptions.Item label="Địa chỉ">
-          {record?.user?.address}
-        </Descriptions.Item>
-        <Descriptions.Item label="Phương thức thanh toán">
-          {record?.paymentMethod}
-        </Descriptions.Item>
-        <Descriptions.Item label="Trạng thái đơn hàng">
-          <Tag color={getStatusColor(record?.status || "default")}>
-            {record?.status || "Không xác định"}
-          </Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label="Tổng tiền">
-          {record?.totalAmount?.toLocaleString()}đ
-        </Descriptions.Item>
-        <Descriptions.Item label="Ngày tạo">
-          {record?.createdAt ? new Date(record.createdAt).toLocaleString() : ""}
-        </Descriptions.Item>
-        <Descriptions.Item label="Danh sách sản phẩm">
-          {record?.items?.map((item: any, index: any) => (
-            <div key={index} style={{ marginBottom: 16 }}>
-              <Typography.Text strong>{item.productName}</Typography.Text>
-              <br />
-              Kích cỡ: {item.size} | SL: {item.quantity}
-              <br />
-              Giá: {item.price?.toLocaleString()}đ
-              <br />
-              <Image
-                width={100}
-                src={item.productVariantId?.images?.main?.url}
-                alt="Ảnh sản phẩm"
-              />
-            </div>
-          ))}
-        </Descriptions.Item>
-      </Descriptions>
+      <Row gutter={24}>
+        {/* Danh sách sản phẩm */}
+        <Col span={14}>
+          <Card title="Tất cả sản phẩm">
+            {record?.items?.map((item: any, index: number) => (
+              <Card
+                key={index}
+                type="inner"
+                style={{ marginBottom: 16 }}
+                title={item.productName}
+              >
+                <p>Số lượng: {item.quantity}</p>
+                <p>Kích cỡ: {item.size}</p>
+                <p>Giá: {formatCurrency(item.price)}</p>
+                <Image
+                  width={100}
+                  src={item.productVariantId?.images?.main?.url}
+                  alt="Ảnh sản phẩm"
+                />
+              </Card>
+            ))}
+          </Card>
+
+          <Card title="Tổng giỏ hàng" style={{ marginTop: 24 }}>
+            <Descriptions column={1}>
+              <Descriptions.Item label="Tạm tính">
+                {formatCurrency(record?.totalAmount)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Phí vận chuyển">
+                0đ
+              </Descriptions.Item>
+              <Descriptions.Item label="Giảm giá">
+                - 0đ
+              </Descriptions.Item>
+              <Descriptions.Item label="Thuế (VAT)">
+                10%
+              </Descriptions.Item>
+              <Descriptions.Item label="Tổng cộng">
+                <Text strong style={{ color: "orange" }}>
+                  {formatCurrency(record?.totalAmount)}
+                </Text>
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </Col>
+
+        {/* Thông tin đơn hàng */}
+        <Col span={10}>
+          <Card title="Tóm tắt">
+            <Descriptions column={1}>
+              <Descriptions.Item label="Mã đơn">
+                {record?.orderId}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={getStatusColor(record?.status)}>
+                  {record?.status}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày đặt">
+                {record?.createdAt &&
+                  new Date(record.createdAt).toLocaleString()}
+              </Descriptions.Item>
+              <Descriptions.Item label="Tổng cộng">
+                <Text strong>{formatCurrency(record?.totalAmount)}</Text>
+              </Descriptions.Item>
+              {record?.customerNote && (
+                <Descriptions.Item label="Ghi chú khách hàng">
+                  {record.customerNote}
+                </Descriptions.Item>
+              )}
+              {record?.adminNote && (
+                <Descriptions.Item label="Ghi chú quản trị">
+                  {record.adminNote}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+          </Card>
+
+          {/* Địa chỉ giao hàng */}
+          <Card title="Địa chỉ giao hàng" style={{ marginTop: 24 }}>
+            <Text>{record?.user?.address || "--"}</Text>
+          </Card>
+
+          {/* Thông tin người đặt hàng */}
+          <Card title="Thông tin người đặt hàng" style={{ marginTop: 24 }}>
+            <Descriptions column={1}>
+              <Descriptions.Item label="Họ tên">
+                {record?.user?.name || "--"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Email">
+                {record?.user?.email || "--"}
+              </Descriptions.Item>
+              <Descriptions.Item label="SĐT">
+                {record?.user?.phone || "--"}
+              </Descriptions.Item>
+            </Descriptions>
+            <Divider />
+            <Card title="Phương thức thanh toán">
+              <Text>{record?.paymentMethod || "--"}</Text>
+              <Text>{record?.cashOnDelivery || "--"}</Text>
+            </Card>
+            <Card title="Phương thức vận chuyển" style={{ marginTop: 24 }}>
+              <Text>{record?.shippingMethod || "--"}</Text>
+              <Text>{record?.standardDelivery || "--"}</Text>
+            </Card>
+          </Card>
+        </Col>
+      </Row>
     </Show>
   );
 };
+
