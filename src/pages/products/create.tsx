@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Create, useForm, useTable } from "@refinedev/antd";
-import { Form, Input, TreeSelect } from "antd";
+import { Form, Input, TreeSelect, Switch } from "antd";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
@@ -99,6 +99,16 @@ export const ProductCreate: React.FC = () => {
             }
             value={formProps.form?.getFieldValue("description") || ""}
           />
+        </Form.Item>
+
+        <Form.Item
+          label="Trạng thái"
+          name="status"
+          valuePropName="checked"
+          initialValue={true}
+          rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+        >
+          <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
         </Form.Item>
       </Form>
     </Create>

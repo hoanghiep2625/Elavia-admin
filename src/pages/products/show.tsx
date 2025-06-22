@@ -94,9 +94,9 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
             key: "status",
             render: (status: boolean) =>
                 status ? (
-                    <Tag color="green">Active</Tag>
+                    <Tag color="green">Hoạt động</Tag>
                 ) : (
-                    <Tag color="red">Inactive</Tag>
+                    <Tag color="red">Không hoạt động</Tag>
                 ),
         },
         {
