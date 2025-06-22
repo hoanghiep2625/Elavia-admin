@@ -1,6 +1,9 @@
+import { DeleteOutlined, DownloadOutlined } from "@ant-design/icons";
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
-import { BaseRecord, useCustom } from "@refinedev/core";
-import { Space, Table, Image, Input, Button, Select, Tag } from "antd";
+import { BaseRecord, useCustom, useCustomMutation } from "@refinedev/core";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import { Space, Table, Image, Input, Button, Select, Popover, Popconfirm, message, Tag } from "antd";
 import { useState } from "react";
 
 export const ProductVariantList = () => {
@@ -79,69 +82,171 @@ export const ProductVariantList = () => {
     setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
+  const handleExportExcel = () => {
+    const excelData = tableData.map((variant: any) => {
+      // Lấy tồn kho từng size
+      const sizes = Array.isArray(variant.sizes) ? variant.sizes : [];
+      // Tạo object tồn kho theo size
+      const sizeStock: Record<string, number> = {};
+      ["S", "M", "L", "XL", "XXL"].forEach((size) => {
+        const found = sizes.find((s: any) => s.size === size);
+        sizeStock[size] = found ? found.stock : 0;
+      });
+
+      return {
+        "Sản phẩm": variant?.productId?.name || "",
+        "SKU": variant?.sku,
+        "Màu": variant?.color?.colorName || "",
+        "Giá": variant?.price,
+        "Tồn kho tổng": sizes.reduce((sum: any, s: any) => sum + (s.stock || 0), 0),
+        "S": sizeStock["S"],
+        "M": sizeStock["M"],
+        "L": sizeStock["L"],
+        "XL": sizeStock["XL"],
+        "XXL": sizeStock["XXL"],
+      };
+    });
+
+    // Tạo worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Tự động tính độ rộng cột (auto-fit)
+    const colWidths = Object.keys(excelData[0] || {}).map((key) => ({
+      wch: Math.max(key.length + 2, 15),
+    }));
+    worksheet["!cols"] = colWidths;
+
+    // Tạo workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Danh sách");
+
+    // Xuất ra file
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    saveAs(blob, "variants.xlsx");
+  };
+
+  // Thêm state quản lý các dòng được chọn
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  // Hook xử lý xoá hàng loạt
+  const { mutateAsync: xoaNhieuSanPham } = useCustomMutation();
+
+  // Hàm xử lý xoá hàng loạt
+  const handleBulkDelete = async () => {
+    try {
+      await xoaNhieuSanPham({
+        url: "/admin/variants/bulk-delete",
+        method: "delete",
+        values: {
+          ids: selectedRowKeys
+        },
+      });
+      
+      message.success(`Đã xoá ${selectedRowKeys.length} sản phẩm`);
+      setSelectedRowKeys([]);
+      refetch(); 
+    } catch (error) {
+      message.error('Có lỗi xảy ra khi xoá sản phẩm');
+    }
+  };
+
+  // Cấu hình rowSelection cho Table
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(newSelectedRowKeys);
+    }
+  };
+
   return (
     <List canCreate={false}>
-      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-        <Input
-          placeholder="Tên sản phẩm"
-          value={nameSearch}
-          allowClear
-          onChange={(e) => setNameSearch(e.target.value)}
-          style={{ width: 160 }}
-        />
-        <Input
-          placeholder="Mã sản phẩm (SKU)"
-          value={skuSearch}
-          allowClear
-          onChange={(e) => setSkuSearch(e.target.value)}
-          style={{ width: 180 }}
-        />
-        <Input
-          placeholder="Giá thấp nhất"
-          value={priceMin}
-          onChange={(e) => setPriceMin(e.target.value)}
-          style={{ width: 140 }}
-          type="number"
-          min={0}
-        />
-        <Input
-          placeholder="Giá cao nhất"
-          value={priceMax}
-          onChange={(e) => setPriceMax(e.target.value)}
-          style={{ width: 140 }}
-          type="number"
-          min={0}
-        />
-        <Select
-          placeholder="Chọn màu cơ bản"
-          allowClear
-          style={{ width: 160 }}
-          value={baseColors || undefined}
-          onChange={(value) => setBaseColors(value || "")}
-        >
-          <Select.Option value="black">Đen</Select.Option>
-          <Select.Option value="white">Trắng</Select.Option>
-          <Select.Option value="blue">Xanh dương</Select.Option>
-          <Select.Option value="yellow">Vàng</Select.Option>
-          <Select.Option value="pink">Hồng</Select.Option>
-          <Select.Option value="red">Đỏ</Select.Option>
-          <Select.Option value="gray">Xám</Select.Option>
-          <Select.Option value="beige">Be</Select.Option>
-          <Select.Option value="brown">Nâu</Select.Option>
-          <Select.Option value="green">Xanh lá</Select.Option>
-          <Select.Option value="orange">Cam</Select.Option>
-          <Select.Option value="purple">Tím</Select.Option>
-        </Select>
-        <Button type="primary" onClick={handleSearch}>
-          Tìm kiếm
-        </Button>
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between" }}>
+        {/* Phần tìm kiếm bên trái */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Input
+            placeholder="Tên sản phẩm"
+            value={nameSearch}
+            allowClear
+            onChange={(e) => setNameSearch(e.target.value)}
+            style={{ width: 160 }}
+          />
+          <Input
+            placeholder="Mã sản phẩm (SKU)"
+            value={skuSearch}
+            allowClear
+            onChange={(e) => setSkuSearch(e.target.value)}
+            style={{ width: 180 }}
+          />
+          <Input
+            placeholder="Giá thấp nhất"
+            value={priceMin}
+            onChange={(e) => setPriceMin(e.target.value)}
+            style={{ width: 140 }}
+            type="number"
+            min={0}
+          />
+          <Input
+            placeholder="Giá cao nhất"
+            value={priceMax}
+            onChange={(e) => setPriceMax(e.target.value)}
+            style={{ width: 140 }}
+            type="number"
+            min={0}
+          />
+          <Select
+            placeholder="Chọn màu cơ bản"
+            allowClear
+            style={{ width: 160 }}
+            value={baseColors || undefined}
+            onChange={(value) => setBaseColors(value || "")}
+          >
+            <Select.Option value="black">Đen</Select.Option>
+            <Select.Option value="white">Trắng</Select.Option>
+            <Select.Option value="blue">Xanh dương</Select.Option>
+            <Select.Option value="yellow">Vàng</Select.Option>
+            <Select.Option value="pink">Hồng</Select.Option>
+            <Select.Option value="red">Đỏ</Select.Option>
+            <Select.Option value="gray">Xám</Select.Option>
+            <Select.Option value="beige">Be</Select.Option>
+            <Select.Option value="brown">Nâu</Select.Option>
+            <Select.Option value="green">Xanh lá</Select.Option>
+            <Select.Option value="orange">Cam</Select.Option>
+            <Select.Option value="purple">Tím</Select.Option>
+          </Select>
+          <Button type="primary" onClick={handleSearch}>
+            Tìm kiếm
+          </Button>
+        </div>
+
+        {/* Phần nút hành động bên phải */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {selectedRowKeys.length > 0 && (
+            <Popconfirm
+              title={`Bạn có chắc muốn xoá ${selectedRowKeys.length} sản phẩm đã chọn?`}
+              onConfirm={handleBulkDelete}
+            >
+              <Button danger icon={<DeleteOutlined />}>
+                Xoá {selectedRowKeys.length} biến thể
+              </Button>
+            </Popconfirm>
+          )}
+          <Button type="primary" onClick={handleExportExcel}>
+            Xuất Excel
+          </Button>
+        </div>
       </div>
+
       {isLoading ? (
         <div>Đang tải...</div>
       ) : isError ? (
         <div>Lỗi khi tải dữ liệu</div>
       ) : (
         <Table
+          rowSelection={rowSelection}
           dataSource={tableData}
           rowKey="_id"
           pagination={{
@@ -199,21 +304,54 @@ export const ProductVariantList = () => {
               );
             }}
           />
-          <Table.Column
-            dataIndex="price"
-            title="Giá"
-            sorter={true}
-            render={(value) => value?.toLocaleString("vi-VN") + " ₫"}
-          />
-          <Table.Column
-            align="center"
-            title="Tồn kho"
-            sorter={false}
-            render={(_, record) => {
-              const totalStock = Array.isArray(record.sizes)
-                ? record.sizes.reduce((sum, size) => sum + (size.stock || 0), 0)
+        
+        <Table.Column
+          title="Tồn kho"
+          align="center"
+          sorter={(a, b) => {
+            const getTotalStock = (record: any) => {
+              return Array.isArray(record.sizes) 
+                ? record.sizes.reduce((sum: any, size: any) => sum + (size.stock || 0), 0)
                 : 0;
-              return totalStock;
+            };
+            return getTotalStock(a) - getTotalStock(b);
+          }}
+          render={(_, record) => {
+            const sizes = Array.isArray(record.sizes) ? record.sizes : [];
+            const totalStock = sizes.reduce((sum, size) => sum + (size.stock || 0), 0);
+            
+            const content = (
+              <div>
+                {sizes.map((size) => (
+                  <div key={size.size} style={{ marginBottom: 4 }}>
+                    Size {size.size}: <b>{size.stock}</b>
+                  </div>
+                ))}
+              </div>
+            );
+
+            return (
+              <Popover 
+                content={content}
+                title="Chi tiết tồn kho"
+                trigger="click"
+              >
+                <span style={{ cursor: 'pointer', color: totalStock > 0 ? '#1890ff' : '#ff4d4f' }}>
+                  {totalStock > 0 ? totalStock : "Hết hàng"}
+                </span>
+              </Popover>
+            );
+          }}
+        />
+          <Table.Column 
+            dataIndex="price" 
+            title="Giá" 
+            sorter={true}
+            render={(value) => {
+              return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+              }).format(value);
             }}
           />
           <Table.Column
@@ -222,7 +360,7 @@ export const ProductVariantList = () => {
             sorter={true}
             render={(status) => (
               <Tag color={status ? "green" : "red"}>
-                {status ? "Active" : "Inactive"}
+                {status ? "Hoạt động" : "Không hoạt động"}
               </Tag>
             )}
           />
@@ -231,6 +369,7 @@ export const ProductVariantList = () => {
             title="Ảnh chính"
             render={(value) => <Image src={value} width={50} />}
           />
+
           <Table.Column
             dataIndex="createdAt"
             title="Ngày tạo"
@@ -270,3 +409,4 @@ export const ProductVariantList = () => {
     </List>
   );
 };
+
