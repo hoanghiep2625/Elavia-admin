@@ -1,11 +1,11 @@
 import { Edit, useForm, useTable } from "@refinedev/antd";
-import { Form, Input, TreeSelect } from "antd";
+import { Form, Input, TreeSelect, Table, Radio, Image, Select } from "antd";
 import React, { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import axios from "axios";
+import { useCustom } from "@refinedev/core";
 
-// Hàm dựng cấu trúc cây danh mục
 const buildTreeData = (
   categories: any[],
   parentId: string | null = null
@@ -38,7 +38,6 @@ export const ProductEdit = ({ variantId }: { variantId: string }) => {
   const [treeData, setTreeData] = useState<any[]>([]);
   const [isReady, setIsReady] = useState(false);
 
-  // Lấy danh sách danh mục và dựng treeData
   useEffect(() => {
     const raw = Array.isArray(categoryTableProps.dataSource)
       ? categoryTableProps.dataSource
@@ -47,9 +46,12 @@ export const ProductEdit = ({ variantId }: { variantId: string }) => {
     const tree = buildTreeData(raw);
     setTreeData(tree);
 
-    // Nếu categoryId là object, lấy _id
     let categoryValue = formProps?.initialValues?.categoryId;
-    if (categoryValue && typeof categoryValue === "object" && categoryValue._id) {
+    if (
+      categoryValue &&
+      typeof categoryValue === "object" &&
+      categoryValue._id
+    ) {
       categoryValue = categoryValue._id;
     }
 
@@ -63,27 +65,100 @@ export const ProductEdit = ({ variantId }: { variantId: string }) => {
   }, [categoryTableProps.dataSource, formProps.initialValues]);
 
   // Lấy dữ liệu variant và set vào form
+  const { data: variantData, isLoading: isVariantLoading } = useCustom({
+    url: `/admin/variants/${variantId}`,
+    method: "get",
+    queryOptions: {
+      enabled: !!variantId,
+    },
+  });
+
   useEffect(() => {
-    if (!variantId) return;
-    const fetchVariant = async () => {
-      try {
-        const res = await axios.get(`http://localhost:5175/api/admin/variants/${variantId}`);
-        const data = res.data;
-        // Set các trường vào form, chú ý trường categoryId
-        formProps.form?.setFieldsValue({
-          name: data.name,
-          sku: data.sku,
-          categoryId: data.categoryId,
-          shortDescription: data.shortDescription,
-          description: data.description,
-        });
-        setIsReady(true);
-      } catch (err) {
-        setIsReady(true);
-      }
-    };
-    fetchVariant();
-  }, [variantId, formProps.form]);
+    if (!variantData?.data) return;
+    const data = variantData.data;
+    formProps.form?.setFieldsValue({
+      name: data.name,
+      sku: data.sku,
+      categoryId: data.categoryId,
+      shortDescription: data.shortDescription,
+      description: data.description,
+      representativeVariantId: data.representativeVariantId,
+    });
+    setIsReady(true);
+  }, [variantData?.data, formProps.form]);
+
+  const ProductVariantsSelect = ({ productId }: { productId: string }) => {
+    const { data, isLoading } = useCustom({
+      url: `/admin/variants-product/${productId}`,
+      method: "get",
+    });
+
+    const variants = data?.data?.data || data?.data || [];
+
+    return (
+      <Form.Item label="Chọn sản phẩm đại diện" name="representativeVariantId">
+        <Select
+          loading={isLoading}
+          placeholder="Chọn variant đại diện"
+          style={{ width: "100%" }}
+          allowClear
+          optionLabelProp="label"
+        >
+          {variants.map((variant: any) => (
+            <Select.Option
+              key={variant._id}
+              value={variant._id}
+              label={
+                <span>
+                  <img
+                    className="flex center"
+                    src={variant.images?.main?.url}
+                    alt=""
+                    style={{
+                      width: 30,
+                      height: 30,
+                      objectFit: "cover",
+                      marginRight: 8,
+                      borderRadius: 4,
+                    }}
+                  />
+                  {variant.color?.colorName || variant.sku} -{" "}
+                  {variant.price?.toLocaleString()}₫
+                </span>
+              }
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <img
+                  src={variant.images?.main?.url}
+                  alt=""
+                  style={{
+                    width: 40,
+                    height: 40,
+                    objectFit: "cover",
+                    borderRadius: 4,
+                  }}
+                />
+                <div>
+                  <div>
+                    <b>{variant.color?.colorName || variant.sku}</b>
+                  </div>
+                  <div style={{ color: "#888" }}>
+                    {variant.price?.toLocaleString()}₫
+                  </div>
+                </div>
+              </div>
+            </Select.Option>
+          ))}
+        </Select>
+      </Form.Item>
+    );
+  };
 
   if (!isReady) return <div>Đang tải dữ liệu sản phẩm...</div>;
 
@@ -138,6 +213,17 @@ export const ProductEdit = ({ variantId }: { variantId: string }) => {
               formProps.form?.setFieldsValue({ description: value });
             }}
           />
+        </Form.Item>
+        <Form.Item name="representativeVariantId" hidden>
+          <Input type="hidden" />
+        </Form.Item>
+        <Form.Item shouldUpdate>
+          {() => {
+            const productId = formProps.form?.getFieldValue("_id");
+            return productId ? (
+              <ProductVariantsSelect productId={productId} />
+            ) : null;
+          }}
         </Form.Item>
       </Form>
     </Edit>

@@ -199,7 +199,12 @@ export const ProductVariantList = () => {
               );
             }}
           />
-          <Table.Column dataIndex="price" title="Giá" sorter={true} />
+          <Table.Column
+            dataIndex="price"
+            title="Giá"
+            sorter={true}
+            render={(value) => value?.toLocaleString("vi-VN") + " ₫"}
+          />
           <Table.Column
             align="center"
             title="Tồn kho"

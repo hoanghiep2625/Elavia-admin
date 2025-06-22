@@ -157,7 +157,7 @@ function App() {
                       <Route path="create" element={<ProductCreate />} />
                       <Route
                         path="edit/:id"
-                        element={<ProductEdit variantId={":id"} />}
+                        element={<ProductEdit variantId={""} />}
                       />
                       <Route path="show/:id" element={<ProductShow />} />
                     </Route>
