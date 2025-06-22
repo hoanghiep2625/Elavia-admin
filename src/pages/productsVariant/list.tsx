@@ -3,7 +3,18 @@ import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
 import { BaseRecord, useCustom, useCustomMutation } from "@refinedev/core";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { Space, Table, Image, Input, Button, Select, Popover, Popconfirm, message, Tag } from "antd";
+import {
+  Space,
+  Table,
+  Image,
+  Input,
+  Button,
+  Select,
+  Popover,
+  Popconfirm,
+  message,
+  Tag,
+} from "antd";
 import { useState } from "react";
 
 export const ProductVariantList = () => {
@@ -95,15 +106,18 @@ export const ProductVariantList = () => {
 
       return {
         "Sản phẩm": variant?.productId?.name || "",
-        "SKU": variant?.sku,
-        "Màu": variant?.color?.colorName || "",
-        "Giá": variant?.price,
-        "Tồn kho tổng": sizes.reduce((sum: any, s: any) => sum + (s.stock || 0), 0),
-        "S": sizeStock["S"],
-        "M": sizeStock["M"],
-        "L": sizeStock["L"],
-        "XL": sizeStock["XL"],
-        "XXL": sizeStock["XXL"],
+        SKU: variant?.sku,
+        Màu: variant?.color?.colorName || "",
+        Giá: variant?.price,
+        "Tồn kho tổng": sizes.reduce(
+          (sum: any, s: any) => sum + (s.stock || 0),
+          0
+        ),
+        S: sizeStock["S"],
+        M: sizeStock["M"],
+        L: sizeStock["L"],
+        XL: sizeStock["XL"],
+        XXL: sizeStock["XXL"],
       };
     });
 
@@ -121,7 +135,10 @@ export const ProductVariantList = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Danh sách");
 
     // Xuất ra file
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
     const blob = new Blob([excelBuffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
@@ -142,15 +159,15 @@ export const ProductVariantList = () => {
         url: "/admin/variants/bulk-delete",
         method: "delete",
         values: {
-          ids: selectedRowKeys
+          ids: selectedRowKeys,
         },
       });
-      
+
       message.success(`Đã xoá ${selectedRowKeys.length} sản phẩm`);
       setSelectedRowKeys([]);
-      refetch(); 
+      refetch();
     } catch (error) {
-      message.error('Có lỗi xảy ra khi xoá sản phẩm');
+      message.error("Có lỗi xảy ra khi xoá sản phẩm");
     }
   };
 
@@ -159,12 +176,18 @@ export const ProductVariantList = () => {
     selectedRowKeys,
     onChange: (newSelectedRowKeys: React.Key[]) => {
       setSelectedRowKeys(newSelectedRowKeys);
-    }
+    },
   };
 
   return (
     <List canCreate={false}>
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between" }}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
         {/* Phần tìm kiếm bên trái */}
         <div style={{ display: "flex", gap: 8 }}>
           <Input
@@ -304,53 +327,64 @@ export const ProductVariantList = () => {
               );
             }}
           />
-        
-        <Table.Column
-          title="Tồn kho"
-          align="center"
-          sorter={(a, b) => {
-            const getTotalStock = (record: any) => {
-              return Array.isArray(record.sizes) 
-                ? record.sizes.reduce((sum: any, size: any) => sum + (size.stock || 0), 0)
-                : 0;
-            };
-            return getTotalStock(a) - getTotalStock(b);
-          }}
-          render={(_, record) => {
-            const sizes = Array.isArray(record.sizes) ? record.sizes : [];
-            const totalStock = sizes.reduce((sum, size) => sum + (size.stock || 0), 0);
-            
-            const content = (
-              <div>
-                {sizes.map((size) => (
-                  <div key={size.size} style={{ marginBottom: 4 }}>
-                    Size {size.size}: <b>{size.stock}</b>
-                  </div>
-                ))}
-              </div>
-            );
 
-            return (
-              <Popover 
-                content={content}
-                title="Chi tiết tồn kho"
-                trigger="click"
-              >
-                <span style={{ cursor: 'pointer', color: totalStock > 0 ? '#1890ff' : '#ff4d4f' }}>
-                  {totalStock > 0 ? totalStock : "Hết hàng"}
-                </span>
-              </Popover>
-            );
-          }}
-        />
-          <Table.Column 
-            dataIndex="price" 
-            title="Giá" 
+          <Table.Column
+            title="Tồn kho"
+            align="center"
+            sorter={(a, b) => {
+              const getTotalStock = (record: any) => {
+                return Array.isArray(record.sizes)
+                  ? record.sizes.reduce(
+                      (sum: any, size: any) => sum + (size.stock || 0),
+                      0
+                    )
+                  : 0;
+              };
+              return getTotalStock(a) - getTotalStock(b);
+            }}
+            render={(_, record) => {
+              const sizes = Array.isArray(record.sizes) ? record.sizes : [];
+              const totalStock = sizes.reduce(
+                (sum, size) => sum + (size.stock || 0),
+                0
+              );
+
+              const content = (
+                <div>
+                  {sizes.map((size) => (
+                    <div key={size.size} style={{ marginBottom: 4 }}>
+                      Size {size.size}: <b>{size.stock}</b>
+                    </div>
+                  ))}
+                </div>
+              );
+
+              return (
+                <Popover
+                  content={content}
+                  title="Chi tiết tồn kho"
+                  trigger="click"
+                >
+                  <span
+                    style={{
+                      cursor: "pointer",
+                      color: totalStock > 0 ? "#1890ff" : "#ff4d4f",
+                    }}
+                  >
+                    {totalStock > 0 ? totalStock : "Hết hàng"}
+                  </span>
+                </Popover>
+              );
+            }}
+          />
+          <Table.Column
+            dataIndex="price"
+            title="Giá"
             sorter={true}
             render={(value) => {
-              return new Intl.NumberFormat('vi-VN', {
-                style: 'currency',
-                currency: 'VND'
+              return new Intl.NumberFormat("vi-VN", {
+                style: "currency",
+                currency: "VND",
               }).format(value);
             }}
           />
@@ -409,4 +443,3 @@ export const ProductVariantList = () => {
     </List>
   );
 };
-
