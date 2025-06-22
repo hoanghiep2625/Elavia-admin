@@ -1,5 +1,14 @@
 import { Edit, useForm, useTable } from "@refinedev/antd";
-import { Form, Input, TreeSelect, Table, Radio, Image, Select, Switch } from "antd";
+import {
+  Form,
+  Input,
+  TreeSelect,
+  Table,
+  Radio,
+  Image,
+  Select,
+  Switch,
+} from "antd";
 import React, { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -134,16 +143,7 @@ export const ProductEdit = ({ variantId }: { variantId: string }) => {
                   gap: 8,
                 }}
               >
-                <img
-                  src={variant.images?.main?.url}
-                  alt=""
-                  style={{
-                    width: 40,
-                    height: 40,
-                    objectFit: "cover",
-                    borderRadius: 4,
-                  }}
-                />
+                <Image src={variant.images?.main?.url} alt="" width={30} />
                 <div>
                   <div>
                     <b>{variant.color?.colorName || variant.sku}</b>

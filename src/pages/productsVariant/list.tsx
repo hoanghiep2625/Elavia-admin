@@ -14,8 +14,10 @@ import {
   Popconfirm,
   message,
   Tag,
+  Tooltip,
 } from "antd";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export const ProductVariantList = () => {
   const [pagination, setPagination] = useState({
@@ -295,8 +297,18 @@ export const ProductVariantList = () => {
             dataIndex={["productId", "name"]}
             title="Sản phẩm"
             sorter={true}
-            render={(value) => value || "Không xác định"}
+            render={(_, record) => {
+              const name = record.productId?.name || "Không xác định";
+              const productId = record.productId?._id;
+
+              return productId ? (
+                <a href={`/products/show/${productId}`}>{name}</a>
+              ) : (
+                name
+              );
+            }}
           />
+
           <Table.Column dataIndex="sku" title="SKU" sorter={true} />
           <Table.Column
             title="Màu"
@@ -327,7 +339,6 @@ export const ProductVariantList = () => {
               );
             }}
           />
-
           <Table.Column
             title="Tồn kho"
             align="center"
@@ -363,7 +374,7 @@ export const ProductVariantList = () => {
                 <Popover
                   content={content}
                   title="Chi tiết tồn kho"
-                  trigger="click"
+                  trigger="hover"
                 >
                   <span
                     style={{
@@ -392,18 +403,59 @@ export const ProductVariantList = () => {
             dataIndex="status"
             title="Trạng thái"
             sorter={true}
-            render={(status) => (
-              <Tag color={status ? "green" : "red"}>
-                {status ? "Hoạt động" : "Không hoạt động"}
-              </Tag>
-            )}
+            render={(_, record) => {
+              const status = record.status;
+              const productStatus = record.productId?.status;
+
+              let color = "default";
+              let text = "";
+              let tooltipText = "";
+
+              if (productStatus === false) {
+                color = "red";
+                text = "Không hoạt động";
+                tooltipText = "Sản phẩm đang bị vô hiệu hóa.";
+              } else {
+                if (status === true) {
+                  color = "green";
+                  text = "Hoạt động";
+                  tooltipText = "Sản phẩm và biến thể đều đang hoạt động.";
+                } else {
+                  color = "gold";
+                  text = "Không hoạt động";
+                  tooltipText = "Biến thể này đang bị vô hiệu hóa.";
+                }
+              }
+
+              return (
+                <span
+                  style={{
+                    background: "white",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <Tooltip
+                    title={tooltipText}
+                    overlayInnerStyle={{
+                      backgroundColor: "#fff",
+                      color: "#000",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                    }}
+                  >
+                    <Tag className="" style={{ margin: 0 }} color={color}>
+                      {text}
+                    </Tag>
+                  </Tooltip>
+                </span>
+              );
+            }}
           />
           <Table.Column
             dataIndex={["images", "main", "url"]}
             title="Ảnh chính"
             render={(value) => <Image src={value} width={50} />}
           />
-
           <Table.Column
             dataIndex="createdAt"
             title="Ngày tạo"

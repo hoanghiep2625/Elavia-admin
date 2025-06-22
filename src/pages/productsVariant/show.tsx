@@ -1,6 +1,6 @@
 import { Show } from "@refinedev/antd";
 import { useShow } from "@refinedev/core";
-import { Card, Row, Col, Typography, Image } from "antd";
+import { Card, Row, Col, Typography, Image, Tag, Tooltip } from "antd";
 
 const { Title, Text } = Typography;
 
@@ -24,8 +24,10 @@ export const ProductVariantShow = () => {
               {record?._id}
             </p>
             <p>
-              <Text strong>Sản phẩm: </Text>
-              {record?.productId?.name}
+              <a href={`/products/show/${record?.productId?._id}`}>
+                <Text strong>Sản phẩm: </Text>
+                {record?.productId?.name}
+              </a>
             </p>
             <p>
               <Text strong>SKU: </Text>
@@ -56,6 +58,51 @@ export const ProductVariantShow = () => {
                   borderRadius: "4px",
                 }}
               />
+            </p>
+            <p>
+              <Text strong>Trạng thái: </Text>
+              {(() => {
+                const status = record?.status;
+                const productStatus = record?.productId?.status;
+
+                let color = "default";
+                let text = "";
+                let tooltipText = "";
+
+                if (productStatus === false) {
+                  color = "red";
+                  text = "Không hoạt động";
+                  tooltipText = "Sản phẩm đang bị vô hiệu hóa.";
+                } else {
+                  if (status === true) {
+                    color = "green";
+                    text = "Hoạt động";
+                    tooltipText = "Sản phẩm và biến thể đều đang hoạt động.";
+                  } else {
+                    color = "gold";
+                    text = "Không hoạt động";
+                    tooltipText = "Biến thể này đang bị vô hiệu hóa.";
+                  }
+                }
+
+                return (
+                  <Tooltip
+                    title={tooltipText}
+                    overlayInnerStyle={{
+                      backgroundColor: "#fff",
+                      color: "#000",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                    }}
+                  >
+                    <Tag
+                      color={color}
+                      style={{ marginLeft: 8, cursor: "pointer" }}
+                    >
+                      {text}
+                    </Tag>
+                  </Tooltip>
+                );
+              })()}
             </p>
           </Card>
 

@@ -1,8 +1,15 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
-import { BaseRecord, useCustom, useCustomMutation, useNotification } from "@refinedev/core";
-import { Button, Input, Space, Table, Modal, Tag } from "antd";
+import {
+  BaseRecord,
+  useCustom,
+  useCustomMutation,
+  useNotification,
+} from "@refinedev/core";
+import { Button, Input, Space, Table, Modal, Tag, Tooltip, Image } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { useEffect, useState } from "react";
+import dayjs from "dayjs";
 
 export const ProductList = () => {
   const [pagination, setPagination] = useState({
@@ -31,7 +38,6 @@ export const ProductList = () => {
         _order: sorter.order,
         ...(filters._name ? { _name: filters._name } : {}),
         ...(filters._sku ? { _sku: filters._sku } : {}),
-        _t: Date.now(), // Tham số random để tránh cache
       },
     },
   });
@@ -72,30 +78,30 @@ export const ProductList = () => {
 
   const handleBulkDelete = () => {
     Modal.confirm({
-      title: 'Xác nhận xoá',
+      title: "Xác nhận xoá",
       content: `Bạn có chắc chắn muốn xoá ${selectedRowKeys.length} sản phẩm đã chọn?`,
-      okText: 'Xoá',
-      cancelText: 'Huỷ',
+      okText: "Xoá",
+      cancelText: "Huỷ",
       onOk: async () => {
         try {
           await bulkDelete({
-            url: '/admin/products/bulk-delete',
-            method: 'delete',
+            url: "/admin/products/bulk-delete",
+            method: "delete",
             values: {
-              ids: selectedRowKeys
+              ids: selectedRowKeys,
             },
           });
-          
+
           setSelectedRowKeys([]);
           await refetch();
           open?.({
-            type: 'success',
+            type: "success",
             message: "Xóa sản phẩm thành công",
           });
         } catch (error) {
           open?.({
-            type: 'error',
-            message: 'Có lỗi xảy ra',
+            type: "error",
+            message: "Có lỗi xảy ra",
           });
         }
       },
@@ -143,7 +149,6 @@ export const ProductList = () => {
       )}
 
       <Table
-        key={tableData.length}
         rowSelection={rowSelection}
         dataSource={Array.isArray(tableData) ? tableData : []}
         rowKey="_id"
@@ -158,39 +163,88 @@ export const ProductList = () => {
         onChange={handleTableChange}
       >
         <Table.Column
-          title="STT"
-          key="stt"
-          align="center"
-          width={60}
-          render={(_, __, index) =>
-            (pagination.current - 1) * pagination.pageSize + index + 1
-          }
+          title="Ảnh"
+          key="image"
+          width={70}
+          render={(_, record: any) => {
+            const img =
+              record.representativeVariantId?.images?.main?.url ||
+              record.representativeVariantId?.images?.product?.[0]?.url;
+            return img ? (
+              <Image src={img} alt="Ảnh sản phẩm" width={50} />
+            ) : (
+              <span>Không có ảnh</span>
+            );
+          }}
         />
-        <Table.Column dataIndex="name" title="Tên sản phẩm" sorter={true} />
-        <Table.Column dataIndex="sku" title="SKU" sorter={true} />
+        <Table.Column dataIndex="name" title="Tên sản phẩm" />
+        <Table.Column dataIndex="sku" title="SKU" />
         <Table.Column
           dataIndex={["categoryId", "name"]}
           title="Danh mục"
-          sorter={true}
           render={(value) => value || "Không xác định"}
+        />
+        <Table.Column
+          title="Giá"
+          render={(_, record: any) => {
+            return new Intl.NumberFormat("vi-VN", {
+              style: "currency",
+              currency: "VND",
+            }).format(record.representativeVariantId?.price || 0);
+          }}
+        />
+        <Table.Column
+          title="Màu sắc"
+          render={(_, record: any) =>
+            record.representativeVariantId?.color?.colorName || "-"
+          }
+        />
+        <Table.Column
+          title="Tồn kho"
+          render={(_, record: any) =>
+            record.representativeVariantId?.sizes
+              ? record.representativeVariantId.sizes.reduce(
+                  (sum: number, s: any) => sum + (s.stock || 0),
+                  0
+                )
+              : "-"
+          }
+        />
+        <Table.Column
+          dataIndex="variantCount"
+          title="Số biến thể"
+          align="center"
+          render={(count) => count ?? 0}
         />
         <Table.Column
           dataIndex="status"
           title="Trạng thái"
-          sorter={true}
           render={(status) => (
-            <Tag color={status === true || status === "active" ? "green" : "red"}>
-              {status === true || status === "active" ? "Hoạt động" : "Không hoạt động"}
+            <Tag color={status ? "green" : "red"}>
+              {status ? "Hoạt động" : "Không hoạt động"}
             </Tag>
           )}
         />
-
+        <Table.Column
+          dataIndex="createdAt"
+          title="Ngày tạo"
+          render={(date) =>
+            date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "-"
+          }
+        />
+        <Table.Column
+          dataIndex="updatedAt"
+          title="Cập nhật"
+          render={(date) =>
+            date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "-"
+          }
+        />
         <Table.Column
           title="Hành động"
           dataIndex="actions"
-          width={200}
-          render={(_, record: BaseRecord) => (
-            <Space>
+          width={160}
+          render={(_, record: any) => (
+            <Space size="small">
               <EditButton hideText size="small" recordItemId={record._id} />
               <ShowButton hideText size="small" recordItemId={record._id} />
               <DeleteButton
@@ -199,15 +253,16 @@ export const ProductList = () => {
                 recordItemId={record._id}
                 onSuccess={() => refetch()}
               />
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => {
-                  window.location.href = `/variants/create/${record._id}`;
-                }}
-              >
-                Thêm biến thể ({record.variantCount || 0})
-              </Button>
+              <Tooltip title="Thêm biến thể">
+                <Button
+                  size="small"
+                  type="default"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    window.location.href = `/variants/create/${record._id}`;
+                  }}
+                />
+              </Tooltip>
             </Space>
           )}
         />
