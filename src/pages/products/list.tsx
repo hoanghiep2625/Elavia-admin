@@ -1,6 +1,6 @@
 import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
 import { BaseRecord, useCustom, useCustomMutation, useNotification } from "@refinedev/core";
-import { Button, Input, Space, Table, Modal } from "antd";
+import { Button, Input, Space, Table, Modal, Tag } from "antd";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { useEffect, useState } from "react";
 
@@ -173,6 +173,16 @@ export const ProductList = () => {
           title="Danh mục"
           sorter={true}
           render={(value) => value || "Không xác định"}
+        />
+        <Table.Column
+          dataIndex="status"
+          title="Trạng thái"
+          sorter={true}
+          render={(status) => (
+            <Tag color={status === true || status === "active" ? "green" : "red"}>
+              {status === true || status === "active" ? "Hoạt động" : "Không hoạt động"}
+            </Tag>
+          )}
         />
 
         <Table.Column

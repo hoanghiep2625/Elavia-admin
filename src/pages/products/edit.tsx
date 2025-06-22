@@ -1,5 +1,5 @@
 import { Edit, useForm, useTable } from "@refinedev/antd";
-import { Form, Input, TreeSelect, Table, Radio, Image, Select } from "antd";
+import { Form, Input, TreeSelect, Table, Radio, Image, Select, Switch } from "antd";
 import React, { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -216,6 +216,14 @@ export const ProductEdit = ({ variantId }: { variantId: string }) => {
         </Form.Item>
         <Form.Item name="representativeVariantId" hidden>
           <Input type="hidden" />
+        </Form.Item>
+        <Form.Item
+          label="Trạng thái"
+          name="status"
+          valuePropName="checked"
+          rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+        >
+          <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
         </Form.Item>
         <Form.Item shouldUpdate>
           {() => {
