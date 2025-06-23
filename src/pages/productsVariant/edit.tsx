@@ -1,4 +1,4 @@
-import { Edit, useForm, useTable } from "@refinedev/antd";
+import { Edit, useForm, useTable, useSelect } from "@refinedev/antd";
 import {
   Button,
   Form,
@@ -32,6 +32,12 @@ export const ProductVariantEdit = () => {
     resource: "products",
     syncWithLocation: false,
     pagination: { pageSize: 1000 },
+  });
+
+  const { selectProps: attributeSelectProps } = useSelect({
+    resource: "attributes",
+    optionLabel: "name",
+    optionValue: "slug",
   });
 
   const [productTreeData, setProductTreeData] = useState([]);
@@ -88,7 +94,8 @@ export const ProductVariantEdit = () => {
         },
         images: { main: mainImage, hover: hoverImage, product: productImages },
         sizes,
-        status: data.status === true || data.status === "active", // true nếu là true hoặc "active"
+        attribute: data.attribute || [],
+        status: data.status === true || data.status === "active",
       });
     }
   }, [queryResult?.data?.data]);
@@ -99,8 +106,11 @@ export const ProductVariantEdit = () => {
     if (publicId) {
       setDeletedPublicIds((prev) => [...prev, publicId]);
     }
-    const currentImages = formProps.form?.getFieldValue(["images", imageType]) || [];
-    const updatedImages = currentImages.filter((img: any) => img.uid !== file.uid);
+    const currentImages =
+      formProps.form?.getFieldValue(["images", imageType]) || [];
+    const updatedImages = currentImages.filter(
+      (img: any) => img.uid !== file.uid
+    );
     formProps.form?.setFieldsValue({
       images: {
         ...formProps.form?.getFieldValue("images"),
@@ -146,9 +156,10 @@ export const ProductVariantEdit = () => {
       formData.append(`sizes[${idx}][stock]`, s.stock);
     });
 
-    for (const [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
+    values.attribute?.forEach((attr: any, index: number) => {
+      formData.append(`attribute[${index}][attribute]`, attr.attribute);
+      formData.append(`attribute[${index}][value]`, attr.value);
+    });
 
     try {
       await formProps.onFinish?.(formData);
@@ -157,15 +168,6 @@ export const ProductVariantEdit = () => {
     } catch (error) {
       console.error("Error updating variant:", error);
       message.error("Cập nhật biến thể thất bại");
-      const err = error as { response?: { data?: { errors?: any[] } } };
-      if (err?.response?.data?.errors) {
-        const errors = err.response.data.errors.map((err) => ({
-          name: err.path.split("."),
-          errors: [err.message],
-        }));
-        formProps.form?.setFields(errors);
-        formProps.form?.validateFields().catch(() => {});
-      }
     }
   };
 
@@ -200,7 +202,9 @@ export const ProductVariantEdit = () => {
                 label="Trạng thái"
                 name="status"
                 valuePropName="checked"
-                rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+                rules={[
+                  { required: true, message: "Vui lòng chọn trạng thái" },
+                ]}
               >
                 <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
               </Form.Item>
@@ -273,7 +277,10 @@ export const ProductVariantEdit = () => {
                         danger
                         onClick={() =>
                           handleRemoveImage(
-                            formProps.form?.getFieldValue(["images", "main"])?.[0],
+                            formProps.form?.getFieldValue([
+                              "images",
+                              "main",
+                            ])?.[0],
                             "main"
                           )
                         }
@@ -430,9 +437,55 @@ export const ProductVariantEdit = () => {
               </Row>
             ))}
           </Card>
+          <Card type="inner" title="Thuộc tính" style={{ marginTop: 24 }}>
+            <Form.List name="attribute">
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Row key={key} gutter={16} align="middle">
+                      <Col span={10}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, "attribute"]}
+                          rules={[
+                            { required: true, message: "Chọn thuộc tính" },
+                          ]}
+                        >
+                          <Select
+                            {...attributeSelectProps}
+                            placeholder="Chọn thuộc tính"
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={10}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, "value"]}
+                          rules={[{ required: true, message: "Nhập giá trị" }]}
+                        >
+                          <Input placeholder="Giá trị" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
+                        <Button
+                          danger
+                          onClick={() => remove(name)}
+                          icon={<DeleteOutlined />}
+                        />
+                      </Col>
+                    </Row>
+                  ))}
+                  <Form.Item>
+                    <Button type="dashed" onClick={() => add()} block>
+                      Thêm thuộc tính
+                    </Button>
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </Card>
         </Form>
       </Card>
     </Edit>
   );
 };
-

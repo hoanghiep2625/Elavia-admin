@@ -35,6 +35,7 @@ interface FormValues {
   color: Color;
   sizes: Size[];
   status: string;
+  attributes?: Record<string, string>;
 }
 
 export const ProductVariantCreate = () => {
@@ -55,6 +56,20 @@ export const ProductVariantCreate = () => {
     };
     saveButtonProps: any;
   };
+  const [attributes, setAttributes] = useState<
+    { slug: string; name: string; values: string[] }[]
+  >([]);
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_URL}/admin/attributes`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      .then((res) => {
+        setAttributes(res.data);
+      });
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -75,6 +90,13 @@ export const ProductVariantCreate = () => {
   const handleSubmit = async (values: FormValues) => {
     try {
       const formData = new FormData();
+      const attributesArray = Object.entries(values.attributes || {}).map(
+        ([attribute, value]) => ({ attribute, value })
+      );
+      attributesArray.forEach((attr, index) => {
+        formData.append(`attributes[${index}][attribute]`, attr.attribute);
+        formData.append(`attributes[${index}][value]`, attr.value);
+      });
 
       formData.append("productId", id || "");
       formData.append("sku", values.sku);
@@ -177,7 +199,9 @@ export const ProductVariantCreate = () => {
               <Form.Item
                 label="Trạng thái"
                 name="status"
-                rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+                rules={[
+                  { required: true, message: "Vui lòng chọn trạng thái" },
+                ]}
               >
                 <Switch
                   checkedChildren="Active"
@@ -310,9 +334,30 @@ export const ProductVariantCreate = () => {
               </Row>
             ))}
           </Card>
+          <Card
+            type="inner"
+            title="Thuộc tính sản phẩm"
+            style={{ marginTop: 16 }}
+          >
+            {attributes.map((attr) => (
+              <Form.Item
+                key={attr.slug}
+                label={attr.name}
+                name={["attributes", attr.slug]}
+                rules={[{ required: true, message: `Chọn ${attr.name}` }]}
+              >
+                <Select placeholder={`Chọn ${attr.name}`}>
+                  {attr.values.map((val) => (
+                    <Select.Option key={val} value={val}>
+                      {val}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            ))}
+          </Card>
         </Form>
       </Card>
     </Create>
   );
 };
-

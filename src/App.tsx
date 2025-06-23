@@ -45,6 +45,12 @@ import {
 import { OrderEdit, OrderList, OrderShow } from "./pages/orders";
 import { UserEdit, UserList, UserShow } from "./pages/users";
 import StatsDashboard from "./pages/stats/dashboard";
+import {
+  AttributeCreate,
+  AttributeEdit,
+  AttributeList,
+  AttributeShow,
+} from "./pages/attributes";
 
 export const customDataProvider = simpleRestProvider(
   `${import.meta.env.VITE_API_URL}/admin`,
@@ -78,6 +84,16 @@ function App() {
                     create: "/categories/create",
                     edit: "/categories/edit/:id",
                     show: "/categories/show/:id",
+                    meta: {
+                      canDelete: true,
+                    },
+                  },
+                  {
+                    name: "attributes",
+                    list: "/attributes",
+                    create: "/attributes/create",
+                    edit: "/attributes/edit/:id",
+                    show: "/attributes/show/:id",
                     meta: {
                       canDelete: true,
                     },
@@ -150,6 +166,12 @@ function App() {
                       <Route path="create" element={<CategoryCreate />} />
                       <Route path="edit/:id" element={<CategoryEdit />} />
                       <Route path="show/:id" element={<CategoryShow />} />
+                    </Route>
+                    <Route path="/attributes">
+                      <Route index element={<AttributeList />} />
+                      <Route path="create" element={<AttributeCreate />} />
+                      <Route path="edit/:id" element={<AttributeEdit />} />
+                      <Route path="show/:id" element={<AttributeShow />} />
                     </Route>
                     <Route path="/products">
                       <Route index element={<ProductList />} />

@@ -104,6 +104,14 @@ export const ProductVariantShow = () => {
                 );
               })()}
             </p>
+            <p>
+              <Text strong>Thuộc tính: </Text>
+              {record?.attributes?.map((attr: any, index: number) => (
+                <Tag key={index} color="blue">
+                  {attr.attribute}: {attr.value}
+                </Tag>
+              ))}
+            </p>
           </Card>
 
           <Card title="Kích Thước" bordered style={{ marginTop: "24px" }}>
