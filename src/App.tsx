@@ -1,7 +1,6 @@
 import { Authenticated, GitHubBanner, Refine } from "@refinedev/core";
 import { DevtoolsPanel, DevtoolsProvider } from "@refinedev/devtools";
 import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
-
 import {
   ErrorComponent,
   ThemedLayoutV2,
@@ -9,7 +8,6 @@ import {
   useNotificationProvider,
 } from "@refinedev/antd";
 import "@refinedev/antd/dist/reset.css";
-
 import routerBindings, {
   CatchAllNavigate,
   DocumentTitleHandler,
@@ -45,6 +43,24 @@ import {
 import { OrderEdit, OrderList, OrderShow } from "./pages/orders";
 import { UserEdit, UserList, UserShow,UserCreate } from "./pages/users";
 import StatsDashboard from "./pages/stats/dashboard";
+import {
+  AttributeCreate,
+  AttributeEdit,
+  AttributeList,
+  AttributeShow,
+} from "./pages/attributes";
+import { SiteSettingsPage } from "./pages/settings/edit";
+
+// Import Ant Design icons
+import {
+  DashboardOutlined,
+  TagsOutlined,
+  SettingOutlined,
+  ShoppingOutlined,
+  AppstoreAddOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 
 export const customDataProvider = simpleRestProvider(
   `${import.meta.env.VITE_API_URL}/admin`,
@@ -67,53 +83,89 @@ function App() {
                 resources={[
                   {
                     name: "stats",
+                    // options: { label: "Thống kê" },
                     list: "/stats",
                     meta: {
                       label: "Dashboard",
+                      icon: <DashboardOutlined />,
                     },
                   },
                   {
                     name: "categories",
+                    // options: { label: "Quản lý danh mục" },
                     list: "/categories",
                     create: "/categories/create",
                     edit: "/categories/edit/:id",
                     show: "/categories/show/:id",
                     meta: {
                       canDelete: true,
+                      icon: <TagsOutlined />,
+                    },
+                  },
+                  {
+                    name: "attributes",
+                    // options: { label: "Quản lý Thuộc tính" },
+                    list: "/attributes",
+                    create: "/attributes/create",
+                    edit: "/attributes/edit/:id",
+                    show: "/attributes/show/:id",
+                    meta: {
+                      canDelete: true,
+                      icon: <SettingOutlined />,
                     },
                   },
                   {
                     name: "products",
+                    // options: { label: "Quản lý sản phẩm" },
                     list: "/products",
                     create: "/products/create",
                     edit: "/products/edit/:id",
                     show: "/products/show/:id",
                     meta: {
                       canDelete: true,
+                      icon: <ShoppingOutlined />,
                     },
                   },
                   {
                     name: "variants",
+                    // options: { label: "Quản lý biến thể sản phẩm" },
                     list: "/variants",
                     create: "/variants/create",
                     edit: "/variants/edit/:id",
                     show: "/variants/show/:id",
                     meta: {
                       canDelete: true,
+                      icon: <AppstoreAddOutlined />,
                     },
                   },
                   {
                     name: "orders",
+                    // options: { label: "Quản lý đơn hàng" },
                     list: "/orders",
                     show: "/orders/show/:id",
                     edit: "/orders/edit/:id",
+                    meta: {
+                      icon: <ShoppingCartOutlined />,
+                    },
                   },
                   {
                     name: "users",
+                    // options: { label: "Quản lý người dùng" },
                     list: "/users",
                     show: "/users/show/:id",
                     edit: "/users/edit/:id",
-                    create: "/users/create",
+                    meta: {
+                      icon: <UserOutlined />,
+                    },
+                  },
+                  {
+                    name: "site-settings",
+                    // options: { label: "Cài đặt website" },
+                    list: SiteSettingsPage,
+                    edit: SiteSettingsPage,
+                    meta: {
+                      icon: <SettingOutlined />,
+                    },
                   },
                 ]}
                 options={{
@@ -152,6 +204,12 @@ function App() {
                       <Route path="edit/:id" element={<CategoryEdit />} />
                       <Route path="show/:id" element={<CategoryShow />} />
                     </Route>
+                    <Route path="/attributes">
+                      <Route index element={<AttributeList />} />
+                      <Route path="create" element={<AttributeCreate />} />
+                      <Route path="edit/:id" element={<AttributeEdit />} />
+                      <Route path="show/:id" element={<AttributeShow />} />
+                    </Route>
                     <Route path="/products">
                       <Route index element={<ProductList />} />
                       <Route path="create" element={<ProductCreate />} />
@@ -181,8 +239,13 @@ function App() {
                       <Route path="edit/:id" element={<UserEdit />} />
                       <Route path="create" element={<UserCreate />} />
                     </Route>
+                    <Route
+                      path="/site-settings"
+                      element={<SiteSettingsPage />}
+                    />
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>
+
                   <Route
                     element={
                       <Authenticated
