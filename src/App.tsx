@@ -154,6 +154,7 @@ function App() {
                     list: "/users",
                     show: "/users/show/:id",
                     edit: "/users/edit/:id",
+                    create: "/users/create",
                     meta: {
                       icon: <UserOutlined />,
                     },
