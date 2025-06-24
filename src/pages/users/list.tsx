@@ -64,7 +64,7 @@ export const UserList = () => {
   };
 
   return (
-    <List>
+    <List canCreate>
       <div
         style={{
           marginBottom: 16,
