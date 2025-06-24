@@ -41,7 +41,7 @@ import {
   ProductVariantShow,
 } from "./pages/productsVariant";
 import { OrderEdit, OrderList, OrderShow } from "./pages/orders";
-import { UserEdit, UserList, UserShow } from "./pages/users";
+import { UserEdit, UserList, UserShow,UserCreate } from "./pages/users";
 import StatsDashboard from "./pages/stats/dashboard";
 import {
   AttributeCreate,
@@ -154,6 +154,7 @@ function App() {
                     list: "/users",
                     show: "/users/show/:id",
                     edit: "/users/edit/:id",
+                    create: "/users/create",
                     meta: {
                       icon: <UserOutlined />,
                     },
@@ -237,6 +238,7 @@ function App() {
                       <Route index element={<UserList />} />
                       <Route path="show/:id" element={<UserShow />} />
                       <Route path="edit/:id" element={<UserEdit />} />
+                      <Route path="create" element={<UserCreate />} />
                     </Route>
                     <Route
                       path="/site-settings"
