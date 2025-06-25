@@ -58,7 +58,6 @@ export const VoucherList = () => {
     }
   };
 
-  // Khi submit form tìm kiếm
   const handleSearch = (values: any) => {
     setFilters({
       _code: values._code || "",
