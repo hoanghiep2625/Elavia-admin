@@ -264,13 +264,11 @@ export const ProductVariantList = () => {
           </Button>
         </div>
       </div>
-
-      {isLoading ? (
-        <div>Đang tải...</div>
-      ) : isError ? (
+      {isError ? (
         <div>Lỗi khi tải dữ liệu</div>
       ) : (
         <Table
+          loading={isLoading}
           rowSelection={rowSelection}
           dataSource={tableData}
           rowKey="_id"

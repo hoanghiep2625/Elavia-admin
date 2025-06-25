@@ -41,7 +41,7 @@ import {
   ProductVariantShow,
 } from "./pages/productsVariant";
 import { OrderEdit, OrderList, OrderShow } from "./pages/orders";
-import { UserEdit, UserList, UserShow,UserCreate } from "./pages/users";
+import { UserEdit, UserList, UserShow, UserCreate } from "./pages/users";
 import StatsDashboard from "./pages/stats/dashboard";
 import {
   AttributeCreate,
@@ -60,7 +60,13 @@ import {
   AppstoreAddOutlined,
   ShoppingCartOutlined,
   UserOutlined,
+  GiftOutlined,
+  DatabaseOutlined,
 } from "@ant-design/icons";
+import { VoucherCreate } from "./pages/vochers/create";
+import { VoucherEdit } from "./pages/vochers/edit";
+import { VoucherShow } from "./pages/vochers/show";
+import { VoucherList } from "./pages/vochers/list";
 
 export const customDataProvider = simpleRestProvider(
   `${import.meta.env.VITE_API_URL}/admin`,
@@ -111,7 +117,7 @@ function App() {
                     show: "/attributes/show/:id",
                     meta: {
                       canDelete: true,
-                      icon: <SettingOutlined />,
+                      icon: <DatabaseOutlined />,
                     },
                   },
                   {
@@ -157,6 +163,16 @@ function App() {
                     create: "/users/create",
                     meta: {
                       icon: <UserOutlined />,
+                    },
+                  },
+                  {
+                    name: "vouchers",
+                    list: "/vouchers",
+                    create: "/vouchers/create",
+                    edit: "/vouchers/edit/:id",
+                    show: "/vouchers/show/:id",
+                    meta: {
+                      icon: <GiftOutlined />,
                     },
                   },
                   {
@@ -240,6 +256,21 @@ function App() {
                       <Route path="edit/:id" element={<UserEdit />} />
                       <Route path="create" element={<UserCreate />} />
                     </Route>
+                    <Route path="/vouchers">
+                      <Route index element={<VoucherList />} />
+                      <Route
+                        path="/vouchers/create"
+                        element={<VoucherCreate />}
+                      />
+                      <Route
+                        path="/vouchers/edit/:id"
+                        element={<VoucherEdit />}
+                      />
+                      <Route
+                        path="/vouchers/show/:id"
+                        element={<VoucherShow />}
+                      />
+                    </Route>{" "}
                     <Route
                       path="/site-settings"
                       element={<SiteSettingsPage />}

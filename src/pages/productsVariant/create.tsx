@@ -67,7 +67,7 @@ export const ProductVariantCreate = () => {
         },
       })
       .then((res) => {
-        setAttributes(res.data);
+        setAttributes(res.data.data);
       });
   }, []);
 

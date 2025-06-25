@@ -44,6 +44,7 @@ export const SiteSettingsPage = () => {
               url: record.logo.url,
               name: "logo",
               status: "done",
+              originFileObj: {},
             },
           ]
         : [],
@@ -54,6 +55,7 @@ export const SiteSettingsPage = () => {
               url: record.favicon.url,
               name: "favicon",
               status: "done",
+              originFileObj: {},
             },
           ]
         : [],
@@ -64,6 +66,7 @@ export const SiteSettingsPage = () => {
             url: img.url,
             name: `banner01-${i}`,
             status: "done",
+            originFileObj: {},
           })) || [],
         banner02: record.banners?.banner02
           ? [
@@ -72,6 +75,7 @@ export const SiteSettingsPage = () => {
                 url: record.banners.banner02.url,
                 name: "banner02",
                 status: "done",
+                originFileObj: {},
               },
             ]
           : [],
@@ -81,6 +85,7 @@ export const SiteSettingsPage = () => {
             url: img.url,
             name: `banner03-${i}`,
             status: "done",
+            originFileObj: {},
           })) || [],
       },
     };
