@@ -25,7 +25,6 @@ const getStatusColor = (status: string) => {
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
     default:
-      console.warn("Trạng thái không xác định:", status);
       return "default";
   }
 };
@@ -37,17 +36,20 @@ export const OrderList = () => {
   });
 
   const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
+
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingUser, setPendingUser] = useState("");
   const [pendingPhone, setPendingPhone] = useState("");
   const [pendingAddress, setPendingAddress] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingStatus, setPendingStatus] = useState("");
 
   const [searchOrderId, setSearchOrderId] = useState("");
   const [searchUser, setSearchUser] = useState("");
   const [searchPhone, setSearchPhone] = useState("");
   const [searchAddress, setSearchAddress] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
+  const [searchStatus, setSearchStatus] = useState("");
 
   const query: Record<string, any> = {
     _page: pagination.current,
@@ -60,6 +62,7 @@ export const OrderList = () => {
   if (searchPhone) query._phone = searchPhone;
   if (searchAddress) query._address = searchAddress;
   if (searchEmail) query._email = searchEmail;
+  if (searchStatus) query._status = searchStatus;
 
   const { data, isLoading } = useCustom({
     url: "/admin/orders",
@@ -72,11 +75,7 @@ export const OrderList = () => {
   const tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
-  const handleTableChange = (
-    paginationConfig: any,
-    _: any,
-    sorterConfig: any
-  ) => {
+  const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
     setPagination({
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize,
@@ -99,6 +98,7 @@ export const OrderList = () => {
     setSearchPhone(pendingPhone);
     setSearchAddress(pendingAddress);
     setSearchEmail(pendingEmail);
+    setSearchStatus(pendingStatus);
     setPagination({ ...pagination, current: 1 });
   };
 
@@ -147,6 +147,26 @@ export const OrderList = () => {
           value={pendingEmail}
           onChange={(e) => setPendingEmail(e.target.value)}
           style={{ width: 160 }}
+        />
+        <Select
+          labelInValue
+          value={pendingStatus ? { label: pendingStatus, value: pendingStatus } : { label: "Trạng thái", value: "" }}
+          onChange={(val) => {
+            if (val.value !== "") setPendingStatus(val.value);
+          }}
+          style={{ width: 180 }}
+          options={[
+            { value: "Chờ xác nhận", label: "Chờ xác nhận" },
+            { value: "Đã xác nhận", label: "Đã xác nhận" },
+            { value: "Người bán huỷ", label: "Người bán huỷ" },
+            { value: "Người mua huỷ", label: "Người mua huỷ" },
+            { value: "Đang giao hàng", label: "Đang giao hàng" },
+            { value: "Giao hàng thành công", label: "Giao hàng thành công" },
+            { value: "Giao hàng thất bại", label: "Giao hàng thất bại" },
+            { value: "Chờ thanh toán", label: "Chờ thanh toán" },
+            { value: "Đã thanh toán", label: "Đã thanh toán" },
+            { value: "Huỷ do quá thời gian thanh toán", label: "Huỷ do quá thời gian thanh toán" },
+          ]}
         />
         <Button type="primary" onClick={handleSearch}>
           Tìm kiếm
@@ -208,7 +228,9 @@ export const OrderList = () => {
           title="Tổng tiền"
           dataIndex="totalAmount"
           sorter={true}
-          render={(amount: number) => amount?.toLocaleString("vi-VN") + "đ"}
+          render={(amount: number) =>
+            amount?.toLocaleString("vi-VN") + "đ"
+          }
         />
         <Table.Column
           title="Phương thức TT"

@@ -3,21 +3,17 @@ import { Create, useForm } from "@refinedev/antd";
 import { Form, Input, message } from "antd";
 import axios from "axios";
 
-// Hàm sinh số điện thoại giả lập
-const generatePhone = () => {
-  return "09" + Math.floor(100000000 + Math.random() * 900000000).toString().slice(0, 8);
-};
 
 const defaultUserData = {
   first_name: "Admin",
   name: "Admin",
-  phone: generatePhone(),
+  phone: "0381234567",
   date: "2000-01-01",
   sex: "1",
   shipping_addresses: [
     {
       receiver_name: "nguoi moi",
-      phone: generatePhone(),
+      phone: "0381234567",
       city: { id: "01", name: "Hà Nội" },
       district: { id: "001", name: "Quận Ba Đình" },
       commune: { id: "00001", name: "Phường Phúc Xá" },
