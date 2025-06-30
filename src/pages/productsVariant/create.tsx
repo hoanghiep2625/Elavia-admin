@@ -46,6 +46,7 @@ export const ProductVariantCreate = () => {
   const [productImages, setProductImages] = useState<UploadFile[]>([]);
   const [productSku, setSku] = useState<string>("");
   const navigate = useNavigate();
+  const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
 
   const { formProps, saveButtonProps } = useForm<FormValues>({
     resource: "product-variants",
@@ -90,9 +91,10 @@ export const ProductVariantCreate = () => {
   const handleSubmit = async (values: FormValues) => {
     try {
       const formData = new FormData();
-      const attributesArray = Object.entries(values.attributes || {}).map(
-        ([attribute, value]) => ({ attribute, value })
-      );
+      const attributesArray = Object.entries(values.attributes || {})
+        .filter(([_, val]) => val !== undefined && val !== "")
+        .map(([attribute, value]) => ({ attribute, value }));
+
       attributesArray.forEach((attr, index) => {
         formData.append(`attributes[${index}][attribute]`, attr.attribute);
         formData.append(`attributes[${index}][value]`, attr.value);
@@ -339,22 +341,46 @@ export const ProductVariantCreate = () => {
             title="Thuộc tính sản phẩm"
             style={{ marginTop: 16 }}
           >
-            {attributes.map((attr) => (
-              <Form.Item
-                key={attr.slug}
-                label={attr.name}
-                name={["attributes", attr.slug]}
-                rules={[{ required: true, message: `Chọn ${attr.name}` }]}
-              >
-                <Select placeholder={`Chọn ${attr.name}`}>
-                  {attr.values.map((val) => (
-                    <Select.Option key={val} value={val}>
-                      {val}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            ))}
+            <Row gutter={16}>
+              <Col span={10}>
+                <Form.Item label="Chọn thuộc tính muốn áp dụng">
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn các thuộc tính áp dụng"
+                    onChange={(selected) => setSelectedAttributes(selected)}
+                    value={selectedAttributes}
+                    allowClear
+                  >
+                    {attributes.map((attr) => (
+                      <Select.Option key={attr.slug} value={attr.slug}>
+                        {attr.name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={14}>
+                {selectedAttributes.map((slug) => {
+                  const attr = attributes.find((a) => a.slug === slug);
+                  if (!attr) return null;
+                  return (
+                    <Form.Item
+                      key={attr.slug}
+                      label={attr.name}
+                      name={["attributes", attr.slug]}
+                    >
+                      <Select placeholder={`Chọn ${attr.name}`} allowClear>
+                        {attr.values.map((val) => (
+                          <Select.Option key={val} value={val}>
+                            {val}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  );
+                })}
+              </Col>
+            </Row>
           </Card>
         </Form>
       </Card>

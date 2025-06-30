@@ -11,7 +11,7 @@ export const AttributeEdit = () => {
           <Input />
         </Form.Item>
         <Form.Item name="slug" label="Slug" rules={[{ required: true }]}>
-          <Input />
+          <Input disabled />
         </Form.Item>
         <Form.Item name="values" label="Values (comma separated)">
           <Select mode="tags" tokenSeparators={[","]} />
