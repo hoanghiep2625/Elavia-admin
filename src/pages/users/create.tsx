@@ -3,7 +3,6 @@ import { Create, useForm } from "@refinedev/antd";
 import { Form, Input, message } from "antd";
 import axios from "axios";
 
-
 const defaultUserData = {
   first_name: "Admin",
   name: "Admin",
@@ -16,7 +15,7 @@ const defaultUserData = {
       phone: "0381234567",
       city: { id: "01", name: "Hà Nội" },
       district: { id: "001", name: "Quận Ba Đình" },
-      commune: { id: "00001", name: "Phường Phúc Xá" },
+      ward: { id: "00001", name: "Phường Phúc Xá" },
       address: "Số 1 Phan Đình Phùng",
       isDefault: true,
     },
@@ -37,7 +36,9 @@ export const UserCreate = () => {
   const handleFinish = async (values: any) => {
     try {
       await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5175/api"}/auth/register`,
+        `${
+          import.meta.env.VITE_API_URL || "http://localhost:5175/api"
+        }/auth/register`,
         {
           ...defaultUserData,
           ...values,

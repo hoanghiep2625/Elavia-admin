@@ -86,7 +86,7 @@ export const UserEdit = () => {
                 title="Địa chỉ"
                 key="address"
                 render={(_, record: any) =>
-                  `${record.address}, ${record.commune?.name}, ${record.district?.name}, ${record.city?.name}`
+                  `${record.address}, ${record.ward?.name}, ${record.district?.name}, ${record.city?.name}`
                 }
               />
               <Table.Column

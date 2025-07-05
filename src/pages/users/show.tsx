@@ -23,7 +23,9 @@ export const UserShow = () => {
       >
         <Descriptions.Item label="Họ và tên">{record?.name}</Descriptions.Item>
         <Descriptions.Item label="Email">{record?.email}</Descriptions.Item>
-        <Descriptions.Item label="Số điện thoại">{record?.phone}</Descriptions.Item>
+        <Descriptions.Item label="Số điện thoại">
+          {record?.phone}
+        </Descriptions.Item>
         <Descriptions.Item label="Ngày sinh">{record?.date}</Descriptions.Item>
         <Descriptions.Item label="Giới tính">
           {record?.sex === "1" ? "Nam" : "Nữ"}
@@ -45,38 +47,37 @@ export const UserShow = () => {
           )}
         </Descriptions.Item>
 
-       <Descriptions.Item label="Địa chỉ giao hàng">
-  {addresses.length === 0 ? (
-    <Text type="secondary">Không có địa chỉ</Text>
-  ) : (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {addresses.map((addr: any, index: number) => (
-        <div
-          key={addr._id || index}
-          style={{
-            padding: 12,
-            border: "1px solid #f0f0f0",
-            borderRadius: 8,
-            backgroundColor: "#fafafa",
-          }}
-        >
-          <Text strong>
-            {index + 1}. {addr.receiver_name}
-          </Text>
-          <br />
-          SĐT: {addr.phone}
-          <br />
-          ĐC: {addr.address}, {addr.commune?.name}, {addr.district?.name}, {addr.city?.name}
-          <br />
-          {addr.isDefault && <Tag color="green">Mặc định</Tag>}
-        </div>
-      ))}
-    </div>
-  )}
-</Descriptions.Item>
+        <Descriptions.Item label="Địa chỉ giao hàng">
+          {addresses.length === 0 ? (
+            <Text type="secondary">Không có địa chỉ</Text>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {addresses.map((addr: any, index: number) => (
+                <div
+                  key={addr._id || index}
+                  style={{
+                    padding: 12,
+                    border: "1px solid #f0f0f0",
+                    borderRadius: 8,
+                    backgroundColor: "#fafafa",
+                  }}
+                >
+                  <Text strong>
+                    {index + 1}. {addr.receiver_name}
+                  </Text>
+                  <br />
+                  SĐT: {addr.phone}
+                  <br />
+                  ĐC: {addr.address}, {addr.ward?.name}, {addr.district?.name},{" "}
+                  {addr.city?.name}
+                  <br />
+                  {addr.isDefault && <Tag color="green">Mặc định</Tag>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Descriptions.Item>
       </Descriptions>
     </Show>
   );
 };
-
-
