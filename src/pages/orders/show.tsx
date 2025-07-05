@@ -11,6 +11,8 @@ import {
   Row,
   Col,
 } from "antd";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const { Text, Title } = Typography;
 
@@ -46,6 +48,12 @@ export const OrderShow = () => {
   const { data, isLoading } = queryResult;
   const record = data?.data;
 
+  const { queryResult: userQuery } = useShow({
+    resource: "/users",
+    id: record?.user?._id,
+  });
+  const userInfo = userQuery?.data?.data;
+
   const formatCurrency = (amount: number) =>
     `${amount?.toLocaleString()}đ`;
 
@@ -60,16 +68,46 @@ export const OrderShow = () => {
                 key={index}
                 type="inner"
                 style={{ marginBottom: 16 }}
-                title={item.productName}
+                bodyStyle={{ padding: 16 }}
               >
-                <p>Số lượng: {item.quantity}</p>
-                <p>Kích cỡ: {item.size}</p>
-                <p>Giá: {formatCurrency(item.price)}</p>
-                <Image
-                  width={100}
-                  src={item.productVariantId?.images?.main?.url}
-                  alt="Ảnh sản phẩm"
-                />
+                <Row align="middle" gutter={16}>
+                  <Col>
+                    <Image
+                      width={90}
+                      src={item.productVariantId?.images?.main?.url}
+                      alt={item.productName}
+                      style={{ borderRadius: 8, border: "1px solid #eee" }}
+                    />
+                  </Col>
+                  <Col flex="auto">
+                    <div style={{ marginBottom: 4 }}>
+                      <Text strong>{item.productName}</Text>
+                    </div>
+                    <div style={{ marginBottom: 4 }}>
+                      <span>
+                        <b>Size:</b> {item.size} &nbsp;|&nbsp;
+                        <b>SL:</b> {item.quantity} &nbsp;|&nbsp;
+                        <b>Giá:</b> {formatCurrency(item.price)}
+                      </span>
+                    </div>
+                    <div>
+                      <span>
+                        <b>Màu:</b>{" "}
+                        <Tag
+                          style={{
+                            background: item.productVariantId?.color?.actualColor,
+                            color: "#333",
+                            border: "none",
+                            minWidth: 60,
+                            display: "inline-block",
+                          }}
+                        >
+                          {item.productVariantId?.color?.colorName || "--"}
+                        </Tag>
+                      </span>
+                    </div>
+                  </Col>
+                </Row>
               </Card>
             ))}
           </Card>
@@ -77,20 +115,20 @@ export const OrderShow = () => {
           <Card title="Tổng giỏ hàng" style={{ marginTop: 24 }}>
             <Descriptions column={1}>
               <Descriptions.Item label="Tạm tính">
-                {formatCurrency(record?.totalAmount)}
+                {formatCurrency(record?.totalPrice)}
               </Descriptions.Item>
               <Descriptions.Item label="Phí vận chuyển">
-                0đ
+                {formatCurrency(record?.shippingFee)}
               </Descriptions.Item>
               <Descriptions.Item label="Giảm giá">
-                - 0đ
+                - {formatCurrency(record?.discountAmount)}
               </Descriptions.Item>
               <Descriptions.Item label="Thuế (VAT)">
                 10%
               </Descriptions.Item>
               <Descriptions.Item label="Tổng cộng">
                 <Text strong style={{ color: "orange" }}>
-                  {formatCurrency(record?.totalAmount)}
+                  {formatCurrency(record?.finalAmount)}
                 </Text>
               </Descriptions.Item>
             </Descriptions>
@@ -114,7 +152,7 @@ export const OrderShow = () => {
                   new Date(record.createdAt).toLocaleString()}
               </Descriptions.Item>
               <Descriptions.Item label="Tổng cộng">
-                <Text strong>{formatCurrency(record?.totalAmount)}</Text>
+                <Text strong>{formatCurrency(record?.finalAmount)}</Text>
               </Descriptions.Item>
               {record?.customerNote && (
                 <Descriptions.Item label="Ghi chú khách hàng">
@@ -129,37 +167,58 @@ export const OrderShow = () => {
             </Descriptions>
           </Card>
 
-          {/* Địa chỉ giao hàng */}
-          <Card title="Địa chỉ giao hàng" style={{ marginTop: 24 }}>
-            <Text>{record?.user?.address || "--"}</Text>
+          {/* Thông tin người nhận */}
+          <Card title="Thông tin người nhận" style={{ marginTop: 24 }}>
+            <Descriptions column={1}>
+              <Descriptions.Item label="Họ tên">
+                {record?.receiver?.name || "--"}
+              </Descriptions.Item>
+              <Descriptions.Item label="SĐT">
+                {record?.receiver?.phone || "--"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa chỉ">
+                {record?.receiver
+                  ? `${record.receiver.address}, ${record.receiver.communeName || record.receiver.wardName || ""}, ${record.receiver.districtName}, ${record.receiver.cityName}`
+                  : "--"}
+              </Descriptions.Item>
+            </Descriptions>
           </Card>
 
           {/* Thông tin người đặt hàng */}
           <Card title="Thông tin người đặt hàng" style={{ marginTop: 24 }}>
             <Descriptions column={1}>
               <Descriptions.Item label="Họ tên">
-                {record?.user?.name || "--"}
+                {userInfo
+                  ? `${userInfo.first_name ? userInfo.first_name + " " : ""}${userInfo.name || ""}`.trim() || "--"
+                  : "--"}
               </Descriptions.Item>
               <Descriptions.Item label="Email">
-                {record?.user?.email || "--"}
+                {userInfo?.email || "--"}
               </Descriptions.Item>
               <Descriptions.Item label="SĐT">
-                {record?.user?.phone || "--"}
+                {userInfo?.phone || "--"}
               </Descriptions.Item>
             </Descriptions>
-            <Divider />
-            <Card title="Phương thức thanh toán">
-              <Text>{record?.paymentMethod || "--"}</Text>
-              <Text>{record?.cashOnDelivery || "--"}</Text>
-            </Card>
-            <Card title="Phương thức vận chuyển" style={{ marginTop: 24 }}>
-              <Text>{record?.shippingMethod || "--"}</Text>
-              <Text>{record?.standardDelivery || "--"}</Text>
-            </Card>
+          </Card>
+
+          {/* Phương thức thanh toán */}
+          <Card title="Phương thức thanh toán" style={{ marginTop: 24 }}>
+            <Text>
+              {record?.paymentMethod === "COD"
+                ? "Thanh toán khi nhận hàng"
+                : record?.paymentMethod || "--"}
+            </Text>
+          </Card>
+
+          {/* Phương thức vận chuyển */}
+          <Card title="Phương thức vận chuyển" style={{ marginTop: 24 }}>
+            <Text>Chuyển phát nhanh</Text>
           </Card>
         </Col>
       </Row>
     </Show>
   );
 };
+
+
 
