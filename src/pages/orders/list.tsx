@@ -184,40 +184,56 @@ export const OrderList = () => {
           showTotal: (total) => `Tổng ${total} bản ghi`,
         }}
         onChange={handleTableChange}
+        scroll={{ x: "max-content" }}
       >
         <Table.Column
           title="STT"
           align="center"
+          width={60}
           render={(_, __, index) =>
             (pagination.current - 1) * pagination.pageSize + index + 1
           }
         />
-        <Table.Column title="Mã đơn hàng" dataIndex="orderId" sorter={true} />
+        <Table.Column title="Mã đơn hàng" dataIndex="orderId" width={160} sorter={true} />
         <Table.Column
-          title="Khách hàng"
-          dataIndex={["user", "name"]}
-          sorter={true}
-          render={(name: string) => name || "Không có"}
+          title="Họ tên"
+          width={160}
+          render={(_, record: any) =>
+            record?.receiver?.name || "Không có"
+          }
         />
         <Table.Column
           title="SĐT"
-          dataIndex={["user", "phone"]}
-          sorter={true}
-          render={(phone: string) => phone || "Không có"}
+          width={120}
+          render={(_, record: any) =>
+            record?.receiver?.phone || "Không có"
+          }
         />
         <Table.Column
           title="Email"
-          dataIndex={["user", "email"]}
-          sorter={true}
-          render={(email: string) => email || "Không có"}
+          width={200}
+          render={(_, record: any) =>
+            record?.user?.email || "Không có"
+          }
         />
         <Table.Column
           title="Địa chỉ giao hàng"
-          sorter={true}
-          render={(_, record: any) => record?.user?.address || "Không có"}
+          width={260}
+          ellipsis={{ showTitle: false }}
+          render={(_, record: any) => {
+            const address = record?.receiver
+              ? `${record.receiver.address}, ${record.receiver.wardName}, ${record.receiver.districtName}, ${record.receiver.cityName}`
+              : "Không có";
+            return (
+              <span title={address}>
+                {address}
+              </span>
+            );
+          }}
         />
         <Table.Column
           title="Ngày đặt"
+          width={140}
           dataIndex="createdAt"
           sorter={true}
           render={(value: string) => (
@@ -226,7 +242,8 @@ export const OrderList = () => {
         />
         <Table.Column
           title="Tổng tiền"
-          dataIndex="totalAmount"
+          width={120}
+          dataIndex="finalAmount"
           sorter={true}
           render={(amount: number) =>
             amount?.toLocaleString("vi-VN") + "đ"
@@ -234,6 +251,7 @@ export const OrderList = () => {
         />
         <Table.Column
           title="Phương thức TT"
+          width={120}
           dataIndex="paymentMethod"
           sorter={true}
           render={(method: string) => {
@@ -251,6 +269,7 @@ export const OrderList = () => {
         />
         <Table.Column
           title="Trạng thái"
+          width={160}
           dataIndex="status"
           sorter={true}
           render={(status: string) => (
@@ -261,6 +280,7 @@ export const OrderList = () => {
         />
         <Table.Column
           title="Thao tác"
+          width={100}
           render={(_, record: any) => (
             <span style={{ display: "flex", gap: 8 }}>
               <ShowButton hideText size="small" recordItemId={record._id} />
