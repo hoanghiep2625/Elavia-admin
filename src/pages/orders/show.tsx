@@ -120,6 +120,9 @@ export const OrderShow = () => {
               <Descriptions.Item label="Phí vận chuyển">
                 {formatCurrency(record?.shippingFee)}
               </Descriptions.Item>
+              <Descriptions.Item label="Mã voucher áp dụng">
+                {record?.voucher?.code || record?.voucher || "--"}
+              </Descriptions.Item>
               <Descriptions.Item label="Giảm giá">
                 - {formatCurrency(record?.discountAmount)}
               </Descriptions.Item>

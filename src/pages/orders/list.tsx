@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { List, DateField, ShowButton, EditButton } from "@refinedev/antd";
-import { Table, Tag, Input, Select, Button } from "antd";
+import { Table, Tag, Input, Select, Button, Tooltip, Descriptions } from "antd";
 import { useCustom } from "@refinedev/core";
 
 const getStatusColor = (status: string) => {
@@ -40,14 +40,12 @@ export const OrderList = () => {
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingUser, setPendingUser] = useState("");
   const [pendingPhone, setPendingPhone] = useState("");
-  const [pendingAddress, setPendingAddress] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingStatus, setPendingStatus] = useState("");
 
   const [searchOrderId, setSearchOrderId] = useState("");
   const [searchUser, setSearchUser] = useState("");
   const [searchPhone, setSearchPhone] = useState("");
-  const [searchAddress, setSearchAddress] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchStatus, setSearchStatus] = useState("");
 
@@ -60,7 +58,6 @@ export const OrderList = () => {
   if (searchOrderId) query._orderId = searchOrderId;
   if (searchUser) query._user = searchUser;
   if (searchPhone) query._phone = searchPhone;
-  if (searchAddress) query._address = searchAddress;
   if (searchEmail) query._email = searchEmail;
   if (searchStatus) query._status = searchStatus;
 
@@ -96,7 +93,6 @@ export const OrderList = () => {
     setSearchOrderId(pendingOrderId);
     setSearchUser(pendingUser);
     setSearchPhone(pendingPhone);
-    setSearchAddress(pendingAddress);
     setSearchEmail(pendingEmail);
     setSearchStatus(pendingStatus);
     setPagination({ ...pagination, current: 1 });
@@ -132,13 +128,6 @@ export const OrderList = () => {
           allowClear
           value={pendingPhone}
           onChange={(e) => setPendingPhone(e.target.value)}
-          style={{ width: 160 }}
-        />
-        <Input
-          placeholder="Địa chỉ"
-          allowClear
-          value={pendingAddress}
-          onChange={(e) => setPendingAddress(e.target.value)}
           style={{ width: 160 }}
         />
         <Input
@@ -194,7 +183,68 @@ export const OrderList = () => {
             (pagination.current - 1) * pagination.pageSize + index + 1
           }
         />
-        <Table.Column title="Mã đơn hàng" dataIndex="orderId" width={160} sorter={true} />
+        <Table.Column
+          title="Mã đơn hàng"
+          dataIndex="orderId"
+          width={160}
+          sorter={true}
+          render={(_, record: any) => (
+            <Tooltip
+              placement="right"
+              overlayStyle={{ minWidth: 400, maxWidth: 600 }}
+              overlayInnerStyle={{
+                background: "#222", // nền tối
+                color: "#fff",      // chữ trắng
+                boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                borderRadius: 8,
+                border: "1px solid #444",
+              }}
+              title={
+                <Descriptions
+                  column={1}
+                  size="small"
+                  bordered
+                  contentStyle={{ color: "#fff" }}
+                  labelStyle={{ color: "#bbb" }}
+                >
+                  <Descriptions.Item label="Mã đơn">{record?.orderId}</Descriptions.Item>
+                  <Descriptions.Item label="Trạng thái">
+                    <Tag color={getStatusColor(record?.status)}>{record?.status}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Ngày đặt">
+                    {record?.createdAt && new Date(record.createdAt).toLocaleString()}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Tổng cộng">
+                    {record?.finalAmount?.toLocaleString("vi-VN") + "đ"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Người nhận">
+                    {record?.receiver?.name} - {record?.receiver?.phone}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Địa chỉ">
+                    {record?.receiver
+                      ? `${record.receiver.address}, ${record.receiver.wardName}, ${record.receiver.districtName}, ${record.receiver.cityName}`
+                      : "--"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Email người đặt">
+                    {record?.user?.email}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Phương thức TT">
+                    {record?.paymentMethod === "COD"
+                      ? "Thanh toán khi nhận hàng(COD)"
+                      : record?.paymentMethod === "MoMo"
+                      ? "MoMo"
+                      : record?.paymentMethod === "zalopay"
+                      ? "ZaloPay"
+                      : record?.paymentMethod || "Không xác định"}
+                  </Descriptions.Item>
+                  
+                </Descriptions>
+              }
+            >
+              <span style={{ color: "#1677ff", cursor: "pointer" }}>{record?.orderId}</span>
+            </Tooltip>
+          )}
+        />
         <Table.Column
           title="Họ tên"
           width={160}
@@ -210,26 +260,11 @@ export const OrderList = () => {
           }
         />
         <Table.Column
-          title="Email"
+          title="Email(Người đặt)"
           width={200}
           render={(_, record: any) =>
             record?.user?.email || "Không có"
           }
-        />
-        <Table.Column
-          title="Địa chỉ giao hàng"
-          width={260}
-          ellipsis={{ showTitle: false }}
-          render={(_, record: any) => {
-            const address = record?.receiver
-              ? `${record.receiver.address}, ${record.receiver.wardName}, ${record.receiver.districtName}, ${record.receiver.cityName}`
-              : "Không có";
-            return (
-              <span title={address}>
-                {address}
-              </span>
-            );
-          }}
         />
         <Table.Column
           title="Ngày đặt"
@@ -257,7 +292,7 @@ export const OrderList = () => {
           render={(method: string) => {
             switch (method) {
               case "COD":
-                return "COD";
+                return "Thanh toán khi nhận hàng(COD)";
               case "MoMo":
                 return "MoMo";
               case "zalopay":
