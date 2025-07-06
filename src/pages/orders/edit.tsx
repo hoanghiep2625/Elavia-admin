@@ -1,5 +1,6 @@
 // src/pages/orders/edit.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { Edit, useForm } from "@refinedev/antd";
 import { useOne } from "@refinedev/core";
 import { Form, Input, Select, Typography, Row, Col, Card, Tag, List } from "antd";
@@ -49,6 +50,103 @@ export const OrderEdit = () => {
   });
   const userInfo = userData?.data;
 
+  // Địa chỉ API
+  const [cities, setCities] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  // Lưu id đã chọn
+  const [selectedCity, setSelectedCity] = useState<string>("");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  const [selectedWard, setSelectedWard] = useState<string>("");
+
+  // Lấy dữ liệu tỉnh/thành phố
+  useEffect(() => {
+    axios
+      .get("https://raw.githubusercontent.com/kenzouno1/DiaGioiHanhChinhVN/master/data.json")
+      .then((res) => setCities(res.data));
+  }, []);
+
+  // Khi có dữ liệu order, set lại các select
+  useEffect(() => {
+    if (order?.receiver?.cityName) {
+      const city = cities.find((c) => c.Name === order.receiver.cityName);
+      if (city) setSelectedCity(city.Id);
+    }
+  }, [order, cities]);
+
+  useEffect(() => {
+    if (selectedCity) {
+      const city = cities.find((c) => c.Id === selectedCity);
+      setDistricts(city?.Districts || []);
+      // Nếu có sẵn districtName thì set
+      if (order?.receiver?.districtName) {
+        const district = city?.Districts?.find((d:any) => d.Name === order.receiver.districtName);
+        if (district) setSelectedDistrict(district.Id);
+      }
+    } else {
+      setDistricts([]);
+      setSelectedDistrict("");
+    }
+    setWards([]);
+    setSelectedWard("");
+  }, [selectedCity, cities, order]);
+
+  useEffect(() => {
+    if (selectedDistrict) {
+      const district = districts.find((d) => d.Id === selectedDistrict);
+      setWards(district?.Wards || []);
+      // Nếu có sẵn wardName thì set
+      if (order?.receiver?.wardName) {
+        const ward = district?.Wards?.find((w:any) => w.Name === order.receiver.wardName);
+        if (ward) setSelectedWard(ward.Id);
+      }
+    } else {
+      setWards([]);
+      setSelectedWard("");
+    }
+  }, [selectedDistrict, districts, order]);
+
+  // Khi chọn select thì cập nhật form
+  const handleCityChange = (value: string) => {
+    setSelectedCity(value);
+    const city = cities.find((c) => c.Id === value);
+    formProps.form?.setFieldsValue({
+      receiver: {
+        ...formProps.form?.getFieldValue("receiver"),
+        cityName: city?.Name || "",
+        districtName: "",
+        wardName: "",
+      },
+    });
+    setSelectedDistrict("");
+    setSelectedWard("");
+  };
+
+  const handleDistrictChange = (value: string) => {
+    setSelectedDistrict(value);
+    const district = districts.find((d) => d.Id === value);
+    formProps.form?.setFieldsValue({
+      receiver: {
+        ...formProps.form?.getFieldValue("receiver"),
+        districtName: district?.Name || "",
+        wardName: "",
+      },
+    });
+    setSelectedWard("");
+  };
+
+  const handleWardChange = (value: string) => {
+    setSelectedWard(value);
+    const ward = wards.find((w) => w.Id === value);
+    formProps.form?.setFieldsValue({
+      receiver: {
+        ...formProps.form?.getFieldValue("receiver"),
+        wardName: ward?.Name || "",
+      },
+    });
+  };
+
   // Map receiver sang user nếu user không có name/phone/address
   const initialValues = {
     ...order,
@@ -62,7 +160,7 @@ export const OrderEdit = () => {
 
   return (
     <Edit saveButtonProps={saveButtonProps} title="Chỉnh sửa đơn hàng">
-      <Form {...formProps} layout="vertical" initialValues={initialValues}>
+      <Form {...formProps} layout="vertical">
         <Row gutter={24}>
           {/* Thông tin người đặt */}
           <Col span={12}>
@@ -113,10 +211,100 @@ export const OrderEdit = () => {
                 name={["receiver", "address"]}
                 rules={[{ required: true, message: "Vui lòng nhập địa chỉ" }]}
               >
-                <Input
-                  placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                />
+                <Input placeholder="Số nhà, đường..." />
               </Form.Item>
+              <Row gutter={8}>
+                  <Col span={8}>
+                  <Form.Item
+                    label="Tỉnh/Thành phố"
+                    name={["receiver", "cityName"]}
+                    rules={[{ required: true, message: "Vui lòng chọn tỉnh/thành phố" }]}
+                  >
+                    <Select
+                      showSearch
+                      placeholder="Chọn tỉnh/thành phố"
+                      value={selectedCity}
+                      onChange={handleCityChange}
+                      filterOption={(input, option) => {
+                        const label =
+                          typeof option?.children === "string"
+                            ? option.children
+                            : Array.isArray(option?.children)
+                            ? option.children.join(" ")
+                            : "";
+                        return label.toLowerCase().includes(input.toLowerCase());
+                      }}
+                    >
+                      {cities.map((c) => (
+                        <Select.Option key={c.Id} value={c.Id}>
+                          {c.Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    label="Quận/Huyện"
+                    name={["receiver", "districtName"]}
+                    rules={[{ required: true, message: "Vui lòng chọn quận/huyện" }]}
+                  >
+                    <Select
+                      showSearch
+                      placeholder="Chọn quận/huyện"
+                      value={selectedDistrict}
+                      onChange={handleDistrictChange}
+                      disabled={!selectedCity}
+                      filterOption={(input, option) => {
+                        const label =
+                          typeof option?.children === "string"
+                            ? option.children
+                            : Array.isArray(option?.children)
+                            ? option.children.join(" ")
+                            : "";
+                        return label.toLowerCase().includes(input.toLowerCase());
+                      }}
+                    >
+                      {districts.map((d) => (
+                        <Select.Option key={d.Id} value={d.Id}>
+                          {d.Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+             
+                 <Col span={8}>
+                  <Form.Item
+                    label="Phường/Xã"
+                    name={["receiver", "wardName"]}
+                    rules={[{ required: true, message: "Vui lòng chọn phường/xã" }]}
+                  >
+                    <Select
+                      showSearch
+                      placeholder="Chọn phường/xã"
+                      value={selectedWard}
+                      onChange={handleWardChange}
+                      disabled={!selectedDistrict}
+                      filterOption={(input, option) => {
+                        const label =
+                          typeof option?.children === "string"
+                            ? option.children
+                            : Array.isArray(option?.children)
+                            ? option.children.join(" ")
+                            : "";
+                        return label.toLowerCase().includes(input.toLowerCase());
+                      }}
+                    >
+                      {wards.map((w) => (
+                        <Select.Option key={w.Id} value={w.Id}>
+                          {w.Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
             </Card>
           </Col>
         </Row>
