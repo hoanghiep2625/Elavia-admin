@@ -134,6 +134,15 @@ export const AttributeList = () => {
           },
         }}
       >
+        <Table.Column
+          title="STT"
+          key="index"
+          align="center"
+          render={(_, __, index) =>
+            pagination.pageSize * (pagination.current - 1) + index + 1
+          }
+          width={70}
+        />
         <Table.Column dataIndex="name" title="Name" />
         <Table.Column dataIndex="slug" title="Slug" />
         <Table.Column

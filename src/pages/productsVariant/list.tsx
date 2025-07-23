@@ -45,8 +45,8 @@ export const ProductVariantList = () => {
       query: {
         _page: pagination.current,
         _limit: pagination.pageSize,
-        _sort: sorter.field,
-        _order: sorter.order,
+        _sort: sorter.field || "createdAt",
+        _order: sorter.order || "desc",     
         ...(filters._priceMin && filters._priceMin !== ""
           ? { _priceMin: filters._priceMin }
           : {}),
