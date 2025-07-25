@@ -17,6 +17,7 @@ import {
 import { UploadOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 const fixedSizes = ["S", "M", "L", "XL", "XXL"];
 
@@ -42,40 +43,42 @@ export const ProductVariantEdit = () => {
 
   const [productTreeData, setProductTreeData] = useState([]);
   const [deletedPublicIds, setDeletedPublicIds] = useState<string[]>([]);
+  const [attributeList, setAttributeList] = useState<any[]>([]);
 
   useEffect(() => {
     if (queryResult?.data?.data) {
+      console.log("Dữ liệu từ API:", queryResult.data.data);
       const data = queryResult.data.data;
       const mainImage = data.images?.main
         ? [
-            {
-              uid: data.images.main.public_id,
-              name: "main.jpg",
-              status: "done",
-              url: data.images.main.url,
-              public_id: data.images.main.public_id,
-            },
-          ]
+          {
+            uid: data.images.main.public_id,
+            name: "main.jpg",
+            status: "done",
+            url: data.images.main.url,
+            public_id: data.images.main.public_id,
+          },
+        ]
         : [];
       const hoverImage = data.images?.hover
         ? [
-            {
-              uid: data.images.hover.public_id,
-              name: "hover.jpg",
-              status: "done",
-              url: data.images.hover.url,
-              public_id: data.images.hover.public_id,
-            },
-          ]
+          {
+            uid: data.images.hover.public_id,
+            name: "hover.jpg",
+            status: "done",
+            url: data.images.hover.url,
+            public_id: data.images.hover.public_id,
+          },
+        ]
         : [];
       const productImages = Array.isArray(data.images?.product)
         ? data.images.product.map((img: any, idx: number) => ({
-            uid: img.public_id || idx,
-            name: `product_${idx}.jpg`,
-            status: "done",
-            url: img.url,
-            public_id: img.public_id,
-          }))
+          uid: img.public_id || idx,
+          name: `product_${idx}.jpg`,
+          status: "done",
+          url: img.url,
+          public_id: img.public_id,
+        }))
         : [];
       const sizes = fixedSizes.map((size) => {
         const found = data.sizes?.find((s: any) => s.size === size);
@@ -94,11 +97,31 @@ export const ProductVariantEdit = () => {
         },
         images: { main: mainImage, hover: hoverImage, product: productImages },
         sizes,
-        attribute: data.attribute || [],
+        attributes: data.attributes || [],
         status: data.status === true || data.status === "active",
       });
     }
   }, [queryResult?.data?.data]);
+
+  useEffect(() => {
+    // Fetch attributes trực tiếp từ API để đảm bảo đúng định dạng
+    const fetchAttributes = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admin/attributes`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        setAttributeList(res.data.data || []);
+      } catch (err) {
+        setAttributeList([]);
+      }
+    };
+    fetchAttributes();
+  }, []);
 
   const handleRemoveImage = (file: any, imageType: any) => {
     message.loading({ content: "Đang xóa ảnh...", key: "removeImage" });
@@ -121,6 +144,7 @@ export const ProductVariantEdit = () => {
   };
 
   const handleFinish = async (values: any) => {
+    console.log("Giá trị form khi submit:", values); // <-- Thêm dòng này
     const formData = new FormData();
 
     formData.append("productId", values.productId);
@@ -156,9 +180,9 @@ export const ProductVariantEdit = () => {
       formData.append(`sizes[${idx}][stock]`, s.stock);
     });
 
-    values.attribute?.forEach((attr: any, index: number) => {
-      formData.append(`attribute[${index}][attribute]`, attr.attribute);
-      formData.append(`attribute[${index}][value]`, attr.value);
+    values.attributes?.forEach((attr: any, index: number) => {
+      formData.append(`attributes[${index}][attribute]`, attr.attribute);
+      formData.append(`attributes[${index}][value]`, attr.value);
     });
 
     try {
@@ -262,31 +286,31 @@ export const ProductVariantEdit = () => {
                 <Space direction="vertical">
                   {formProps.form?.getFieldValue(["images", "main"])?.[0]
                     ?.url && (
-                    <Space>
-                      <Image
-                        src={
-                          formProps.form.getFieldValue(["images", "main"])[0]
-                            .url
-                        }
-                        alt="Ảnh chính"
-                        width={80}
-                        style={{ borderRadius: 4 }}
-                      />
-                      <Button
-                        icon={<DeleteOutlined />}
-                        danger
-                        onClick={() =>
-                          handleRemoveImage(
-                            formProps.form?.getFieldValue([
-                              "images",
-                              "main",
-                            ])?.[0],
-                            "main"
-                          )
-                        }
-                      />
-                    </Space>
-                  )}
+                      <Space>
+                        <Image
+                          src={
+                            formProps.form.getFieldValue(["images", "main"])[0]
+                              .url
+                          }
+                          alt="Ảnh chính"
+                          width={80}
+                          style={{ borderRadius: 4 }}
+                        />
+                        <Button
+                          icon={<DeleteOutlined />}
+                          danger
+                          onClick={() =>
+                            handleRemoveImage(
+                              formProps.form?.getFieldValue([
+                                "images",
+                                "main",
+                              ])?.[0],
+                              "main"
+                            )
+                          }
+                        />
+                      </Space>
+                    )}
                   <Upload
                     listType="picture"
                     maxCount={1}
@@ -312,31 +336,31 @@ export const ProductVariantEdit = () => {
                 <Space direction="vertical">
                   {formProps.form?.getFieldValue(["images", "hover"])?.[0]
                     ?.url && (
-                    <Space>
-                      <Image
-                        src={
-                          formProps.form.getFieldValue(["images", "hover"])[0]
-                            .url
-                        }
-                        alt="Ảnh hover"
-                        width={80}
-                        style={{ borderRadius: 4 }}
-                      />
-                      <Button
-                        icon={<DeleteOutlined />}
-                        danger
-                        onClick={() =>
-                          handleRemoveImage(
-                            formProps.form?.getFieldValue([
-                              "images",
-                              "hover",
-                            ])[0],
-                            "hover"
-                          )
-                        }
-                      />
-                    </Space>
-                  )}
+                      <Space>
+                        <Image
+                          src={
+                            formProps.form.getFieldValue(["images", "hover"])[0]
+                              .url
+                          }
+                          alt="Ảnh hover"
+                          width={80}
+                          style={{ borderRadius: 4 }}
+                        />
+                        <Button
+                          icon={<DeleteOutlined />}
+                          danger
+                          onClick={() =>
+                            handleRemoveImage(
+                              formProps.form?.getFieldValue([
+                                "images",
+                                "hover",
+                              ])[0],
+                              "hover"
+                            )
+                          }
+                        />
+                      </Space>
+                    )}
                   <Upload
                     listType="picture"
                     maxCount={1}
@@ -438,50 +462,126 @@ export const ProductVariantEdit = () => {
             ))}
           </Card>
           <Card type="inner" title="Thuộc tính" style={{ marginTop: 24 }}>
-            <Form.List name="attribute">
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <Row key={key} gutter={16} align="middle">
-                      <Col span={10}>
-                        <Form.Item
-                          {...restField}
-                          name={[name, "attribute"]}
-                          rules={[
-                            { required: true, message: "Chọn thuộc tính" },
-                          ]}
-                        >
-                          <Select
-                            {...attributeSelectProps}
-                            placeholder="Chọn thuộc tính"
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={10}>
-                        <Form.Item
-                          {...restField}
-                          name={[name, "value"]}
-                          rules={[{ required: true, message: "Nhập giá trị" }]}
-                        >
-                          <Input placeholder="Giá trị" />
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Button
-                          danger
-                          onClick={() => remove(name)}
-                          icon={<DeleteOutlined />}
-                        />
-                      </Col>
-                    </Row>
-                  ))}
-                  <Form.Item>
-                    <Button type="dashed" onClick={() => add()} block>
-                      Thêm thuộc tính
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
+            <Form.List name="attributes">
+              {(fields, { add, remove }) => {
+                // Lấy danh sách slug đã chọn để disable option đã có
+                const selectedSlugs = fields
+                  .map(({ name }) =>
+                    formProps.form?.getFieldValue(["attributes", name, "attribute"])
+                  )
+                  .filter(Boolean);
+
+                return (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => {
+                      const currentAttrSlug = formProps.form?.getFieldValue([
+                        "attributes",
+                        name,
+                        "attribute",
+                      ]);
+                      const attrObj = attributeList.find((a) => a.slug === currentAttrSlug);
+
+                      return (
+                        <Row key={key} gutter={16} align="middle">
+                          <Col span={10}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "attribute"]}
+                              rules={[{ required: true, message: "Chọn thuộc tính" }]}
+                            >
+                              <Select
+                                placeholder="Chọn thuộc tính"
+                                showSearch
+                                optionFilterProp="children"
+                                // Disable option nếu đã được chọn ở dòng khác
+                                filterOption={(input, option) => {
+                                  const opt = option as any;
+                                  return typeof opt?.children === "string"
+                                    ? opt.children.toLowerCase().includes(input.toLowerCase())
+                                    : false;
+                                }}
+                              >
+                                {attributeList.map((attr) => (
+                                  <Select.Option
+                                    key={attr.slug}
+                                    value={attr.slug}
+                                    disabled={
+                                      // Disable nếu đã chọn ở dòng khác, trừ dòng hiện tại
+                                      selectedSlugs.includes(attr.slug) &&
+                                      currentAttrSlug !== attr.slug
+                                    }
+                                  >
+                                    {attr.name}
+                                  </Select.Option>
+                                ))}
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                          <Col span={10}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "value"]}
+                              rules={[{ required: true, message: "Chọn giá trị" }]}
+                            >
+                              <Select
+                                placeholder="Chọn giá trị"
+                                allowClear
+                               
+                              >
+                                {(attrObj?.values || []).map((val: string) => (
+                                  <Select.Option key={val} value={val}>
+                                    {val}
+                                  </Select.Option>
+                                ))}
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                          <Col span={4}>
+                            <Button
+                              danger
+                              onClick={() => remove(name)}
+                              icon={<DeleteOutlined />}
+                            />
+                          </Col>
+                        </Row>
+                      );
+                    })}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => {
+                          // Lấy các slug đã chọn
+                          const selectedSlugs = fields
+                            .map(({ name }) =>
+                              formProps.form?.getFieldValue(["attributes", name, "attribute"])
+                            )
+                            .filter(Boolean);
+
+                          // Tìm thuộc tính đầu tiên chưa được chọn
+                          const firstAvailable = attributeList.find(
+                            (attr) => !selectedSlugs.includes(attr.slug)
+                          );
+
+                          // Thêm dòng mới và set thuộc tính luôn nếu có
+                          const idx = fields.length;
+                          add(
+                            firstAvailable
+                              ? { attribute: firstAvailable.slug, value: undefined }
+                              : {}
+                          );
+                        }}
+                        block
+                        disabled={
+                          attributeList.length === 0 ||
+                          fields.length >= attributeList.length
+                        }
+                      >
+                        Thêm thuộc tính
+                      </Button>
+                    </Form.Item>
+                  </>
+                );
+              }}
             </Form.List>
           </Card>
         </Form>
@@ -489,3 +589,5 @@ export const ProductVariantEdit = () => {
     </Edit>
   );
 };
+
+

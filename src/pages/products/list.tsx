@@ -34,8 +34,8 @@ export const ProductList = () => {
       query: {
         _page: pagination.current,
         _limit: pagination.pageSize,
-        _sort: sorter.field,
-        _order: sorter.order,
+        _sort: sorter.field || "createdAt", 
+        _order: sorter.order || "desc",     
         ...(filters._name ? { _name: filters._name } : {}),
         ...(filters._sku ? { _sku: filters._sku } : {}),
       },
@@ -162,6 +162,15 @@ export const ProductList = () => {
         }}
         onChange={handleTableChange}
       >
+        <Table.Column
+          title="STT"
+          key="index"
+          align="center"
+          render={(_, __, index) =>
+            pagination.pageSize * (pagination.current - 1) + index + 1
+          }
+          width={70}
+        />
         <Table.Column
           title="Ảnh"
           key="image"
