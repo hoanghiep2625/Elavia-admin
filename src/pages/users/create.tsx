@@ -18,8 +18,10 @@ const defaultUserData = {
       ward: { id: "00001", name: "Phường Phúc Xá" },
       address: "Số 1 Phan Đình Phùng",
       isDefault: true,
+      type: "home",
     },
   ],
+  isVerified: true,
   verify: 0,
 };
 

@@ -126,9 +126,6 @@ export const OrderShow = () => {
               <Descriptions.Item label="Giảm giá">
                 - {formatCurrency(record?.discountAmount)}
               </Descriptions.Item>
-              <Descriptions.Item label="Thuế (VAT)">
-                10%
-              </Descriptions.Item>
               <Descriptions.Item label="Tổng cộng">
                 <Text strong style={{ color: "orange" }}>
                   {formatCurrency(record?.finalAmount)}
