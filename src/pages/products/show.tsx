@@ -1,5 +1,5 @@
 import React from "react";
-import { Show } from "@refinedev/antd";
+import { EditButton, Show } from "@refinedev/antd";
 import { useCustom, useShow } from "@refinedev/core";
 import {
   Typography,
@@ -10,6 +10,7 @@ import {
   Tag,
   Card,
   Tooltip,
+  
 } from "antd";
 
 const { Title } = Typography;
@@ -123,6 +124,18 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
               second: "2-digit",
             })
           : "",
+    },
+    {
+      title: "Hành động",
+      key: "actions",
+      render: (_: any, record: any) => (
+        <EditButton
+          hideText
+          size="small"
+          resource="variants"
+          recordItemId={record._id}
+        />
+      ),
     },
   ];
 
