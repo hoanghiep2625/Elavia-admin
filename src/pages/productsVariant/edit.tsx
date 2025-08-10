@@ -44,6 +44,8 @@ export const ProductVariantEdit = () => {
   const [productTreeData, setProductTreeData] = useState([]);
   const [deletedPublicIds, setDeletedPublicIds] = useState<string[]>([]);
   const [attributeList, setAttributeList] = useState<any[]>([]);
+  const [priceMode, setPriceMode] = useState<"single" | "multiple">("single");
+  const [commonPrice, setCommonPrice] = useState<number>(0);
 
   useEffect(() => {
     if (queryResult?.data?.data) {
@@ -51,45 +53,60 @@ export const ProductVariantEdit = () => {
       const data = queryResult.data.data;
       const mainImage = data.images?.main
         ? [
-          {
-            uid: data.images.main.public_id,
-            name: "main.jpg",
-            status: "done",
-            url: data.images.main.url,
-            public_id: data.images.main.public_id,
-          },
-        ]
+            {
+              uid: data.images.main.public_id,
+              name: "main.jpg",
+              status: "done",
+              url: data.images.main.url,
+              public_id: data.images.main.public_id,
+            },
+          ]
         : [];
       const hoverImage = data.images?.hover
         ? [
-          {
-            uid: data.images.hover.public_id,
-            name: "hover.jpg",
-            status: "done",
-            url: data.images.hover.url,
-            public_id: data.images.hover.public_id,
-          },
-        ]
+            {
+              uid: data.images.hover.public_id,
+              name: "hover.jpg",
+              status: "done",
+              url: data.images.hover.url,
+              public_id: data.images.hover.public_id,
+            },
+          ]
         : [];
       const productImages = Array.isArray(data.images?.product)
         ? data.images.product.map((img: any, idx: number) => ({
-          uid: img.public_id || idx,
-          name: `product_${idx}.jpg`,
-          status: "done",
-          url: img.url,
-          public_id: img.public_id,
-        }))
+            uid: img.public_id || idx,
+            name: `product_${idx}.jpg`,
+            status: "done",
+            url: img.url,
+            public_id: img.public_id,
+          }))
         : [];
+
+      // Cập nhật sizes để có cả price
       const sizes = fixedSizes.map((size) => {
         const found = data.sizes?.find((s: any) => s.size === size);
-        return { size, stock: found?.stock ?? 0 };
+        return {
+          size,
+          stock: found?.stock ?? 0,
+          price: found?.price ?? 0, // Thêm price
+        };
       });
+
+      // Kiểm tra xem tất cả size có cùng giá không để set priceMode
+      const prices = sizes.map((s) => s.price).filter((p) => p > 0);
+      const uniquePrices = [...new Set(prices)];
+      if (uniquePrices.length === 1) {
+        setPriceMode("single");
+        setCommonPrice(uniquePrices[0]);
+      } else {
+        setPriceMode("multiple");
+      }
 
       formProps.form?.setFieldsValue({
         productId: data.productId?._id || data.productId,
         productName: data.productId?.name || "",
         sku: data.sku,
-        price: data.price,
         color: {
           colorName: data.color?.colorName || "",
           actualColor: data.color?.actualColor || "",
@@ -143,13 +160,39 @@ export const ProductVariantEdit = () => {
     message.success({ content: "Xóa ảnh thành công", key: "removeImage" });
   };
 
+  // Hàm cập nhật giá cho tất cả size khi thay đổi giá chung
+  const handleCommonPriceChange = (price: number) => {
+    setCommonPrice(price);
+    if (priceMode === "single" && formProps.form) {
+      const sizes = formProps.form.getFieldValue("sizes") || [];
+      const updatedSizes = sizes.map((size: any) => ({
+        ...size,
+        price: price,
+      }));
+      formProps.form.setFieldValue("sizes", updatedSizes);
+    }
+  };
+
+  // Hàm thay đổi chế độ giá
+  const handlePriceModeChange = (mode: "single" | "multiple") => {
+    setPriceMode(mode);
+    if (mode === "single" && formProps.form) {
+      // Khi chuyển sang chế độ giá chung, cập nhật tất cả size với giá chung
+      const sizes = formProps.form.getFieldValue("sizes") || [];
+      const updatedSizes = sizes.map((size: any) => ({
+        ...size,
+        price: commonPrice,
+      }));
+      formProps.form.setFieldValue("sizes", updatedSizes);
+    }
+  };
+
   const handleFinish = async (values: any) => {
-    console.log("Giá trị form khi submit:", values); // <-- Thêm dòng này
+    console.log("Giá trị form khi submit:", values);
     const formData = new FormData();
 
     formData.append("productId", values.productId);
     formData.append("sku", values.sku);
-    formData.append("price", values.price);
     formData.append("color.colorName", values.color.colorName);
     formData.append("color.actualColor", values.color.actualColor);
     formData.append("color.baseColor", values.color.baseColor);
@@ -175,9 +218,12 @@ export const ProductVariantEdit = () => {
       formData.append("deletedImages[]", publicId);
     });
 
+    // Cập nhật sizes với price
     values.sizes.forEach((s: any, idx: any) => {
       formData.append(`sizes[${idx}][size]`, s.size);
       formData.append(`sizes[${idx}][stock]`, s.stock);
+      const price = priceMode === "single" ? commonPrice : s.price;
+      formData.append(`sizes[${idx}][price]`, price.toString());
     });
 
     values.attributes?.forEach((attr: any, index: number) => {
@@ -218,9 +264,6 @@ export const ProductVariantEdit = () => {
               </Form.Item>
               <Form.Item label="SKU" name="sku" rules={[{ required: true }]}>
                 <Input disabled={true} />
-              </Form.Item>
-              <Form.Item label="Giá" name="price" rules={[{ required: true }]}>
-                <InputNumber min={0} style={{ width: "100%" }} />
               </Form.Item>
               <Form.Item
                 label="Trạng thái"
@@ -286,31 +329,31 @@ export const ProductVariantEdit = () => {
                 <Space direction="vertical">
                   {formProps.form?.getFieldValue(["images", "main"])?.[0]
                     ?.url && (
-                      <Space>
-                        <Image
-                          src={
-                            formProps.form.getFieldValue(["images", "main"])[0]
-                              .url
-                          }
-                          alt="Ảnh chính"
-                          width={80}
-                          style={{ borderRadius: 4 }}
-                        />
-                        <Button
-                          icon={<DeleteOutlined />}
-                          danger
-                          onClick={() =>
-                            handleRemoveImage(
-                              formProps.form?.getFieldValue([
-                                "images",
-                                "main",
-                              ])?.[0],
-                              "main"
-                            )
-                          }
-                        />
-                      </Space>
-                    )}
+                    <Space>
+                      <Image
+                        src={
+                          formProps.form.getFieldValue(["images", "main"])[0]
+                            .url
+                        }
+                        alt="Ảnh chính"
+                        width={80}
+                        style={{ borderRadius: 4 }}
+                      />
+                      <Button
+                        icon={<DeleteOutlined />}
+                        danger
+                        onClick={() =>
+                          handleRemoveImage(
+                            formProps.form?.getFieldValue([
+                              "images",
+                              "main",
+                            ])?.[0],
+                            "main"
+                          )
+                        }
+                      />
+                    </Space>
+                  )}
                   <Upload
                     listType="picture"
                     maxCount={1}
@@ -336,31 +379,31 @@ export const ProductVariantEdit = () => {
                 <Space direction="vertical">
                   {formProps.form?.getFieldValue(["images", "hover"])?.[0]
                     ?.url && (
-                      <Space>
-                        <Image
-                          src={
-                            formProps.form.getFieldValue(["images", "hover"])[0]
-                              .url
-                          }
-                          alt="Ảnh hover"
-                          width={80}
-                          style={{ borderRadius: 4 }}
-                        />
-                        <Button
-                          icon={<DeleteOutlined />}
-                          danger
-                          onClick={() =>
-                            handleRemoveImage(
-                              formProps.form?.getFieldValue([
-                                "images",
-                                "hover",
-                              ])[0],
-                              "hover"
-                            )
-                          }
-                        />
-                      </Space>
-                    )}
+                    <Space>
+                      <Image
+                        src={
+                          formProps.form.getFieldValue(["images", "hover"])[0]
+                            .url
+                        }
+                        alt="Ảnh hover"
+                        width={80}
+                        style={{ borderRadius: 4 }}
+                      />
+                      <Button
+                        icon={<DeleteOutlined />}
+                        danger
+                        onClick={() =>
+                          handleRemoveImage(
+                            formProps.form?.getFieldValue([
+                              "images",
+                              "hover",
+                            ])[0],
+                            "hover"
+                          )
+                        }
+                      />
+                    </Space>
+                  )}
                   <Upload
                     listType="picture"
                     maxCount={1}
@@ -428,21 +471,78 @@ export const ProductVariantEdit = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Card type="inner" title="Kích thước" style={{ marginTop: 16 }}>
-            {fixedSizes.map((size, index) => (
-              <Row gutter={16} key={index}>
+
+          <Card
+            type="inner"
+            title="Kích thước và Giá"
+            style={{ marginTop: 16 }}
+          >
+            {/* Chọn chế độ giá */}
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={12}>
+                <Form.Item label="Chế độ giá">
+                  <Select
+                    value={priceMode}
+                    onChange={handlePriceModeChange}
+                    style={{ width: "100%" }}
+                  >
+                    <Select.Option value="single">
+                      Giá chung cho tất cả size
+                    </Select.Option>
+                    <Select.Option value="multiple">
+                      Giá riêng cho từng size
+                    </Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              {priceMode === "single" && (
                 <Col span={12}>
                   <Form.Item
-                    label={`Kích thước (${size})`}
+                    label="Giá chung (VNĐ)"
+                    rules={[
+                      { required: true, message: "Vui lòng nhập giá chung" },
+                    ]}
+                  >
+                    <InputNumber
+                      min={0}
+                      style={{ width: "100%" }}
+                      value={commonPrice}
+                      onChange={(value) => handleCommonPriceChange(value || 0)}
+                      placeholder="Nhập giá cho tất cả size"
+                      formatter={(value) =>
+                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      }
+                      parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                    />
+                  </Form.Item>
+                </Col>
+              )}
+            </Row>
+
+            <Row gutter={[16, 8]} style={{ fontWeight: 500, padding: "8px 0" }}>
+              <Col span={6}>Size</Col>
+              <Col span={priceMode === "single" ? 18 : 9}>Số lượng</Col>
+              {priceMode === "multiple" && <Col span={9}>Giá (VNĐ)</Col>}
+            </Row>
+
+            {fixedSizes.map((size, index) => (
+              <Row
+                gutter={16}
+                key={index}
+                align="middle"
+                style={{ marginBottom: 8 }}
+              >
+                <Col span={6}>
+                  <Form.Item
                     name={["sizes", index, "size"]}
                     initialValue={size}
+                    style={{ marginBottom: 0 }}
                   >
                     <Input disabled />
                   </Form.Item>
                 </Col>
-                <Col span={12}>
+                <Col span={priceMode === "single" ? 18 : 9}>
                   <Form.Item
-                    label={`Số lượng (${size})`}
                     name={["sizes", index, "stock"]}
                     rules={[
                       {
@@ -450,6 +550,7 @@ export const ProductVariantEdit = () => {
                         message: `Nhập số lượng cho size ${size}`,
                       },
                     ]}
+                    style={{ marginBottom: 0 }}
                   >
                     <InputNumber
                       min={0}
@@ -458,16 +559,54 @@ export const ProductVariantEdit = () => {
                     />
                   </Form.Item>
                 </Col>
+                {priceMode === "multiple" && (
+                  <Col span={9}>
+                    <Form.Item
+                      name={["sizes", index, "price"]}
+                      rules={[
+                        {
+                          required: true,
+                          message: `Nhập giá cho size ${size}`,
+                        },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <InputNumber
+                        min={0}
+                        style={{ width: "100%" }}
+                        placeholder={`Giá size ${size}`}
+                        formatter={(value) =>
+                          `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                        }
+                        parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                      />
+                    </Form.Item>
+                  </Col>
+                )}
+                {/* Hidden price field cho chế độ single */}
+                {priceMode === "single" && (
+                  <Form.Item
+                    name={["sizes", index, "price"]}
+                    style={{ display: "none" }}
+                  >
+                    <InputNumber />
+                  </Form.Item>
+                )}
               </Row>
             ))}
           </Card>
+
           <Card type="inner" title="Thuộc tính" style={{ marginTop: 24 }}>
             <Form.List name="attributes">
               {(fields, { add, remove }) => {
                 // Lấy danh sách slug đã chọn để disable option đã có
                 const selectedSlugs = fields
                   .map(({ name }) =>
-                    formProps.form?.getFieldValue(["attributes", name, "attribute"])
+                    formProps.form?.getFieldValue([
+                      "attributes",
+                      name,
+                      "attribute",
+                    ])
                   )
                   .filter(Boolean);
 
@@ -479,7 +618,9 @@ export const ProductVariantEdit = () => {
                         name,
                         "attribute",
                       ]);
-                      const attrObj = attributeList.find((a) => a.slug === currentAttrSlug);
+                      const attrObj = attributeList.find(
+                        (a) => a.slug === currentAttrSlug
+                      );
 
                       return (
                         <Row key={key} gutter={16} align="middle">
@@ -487,17 +628,20 @@ export const ProductVariantEdit = () => {
                             <Form.Item
                               {...restField}
                               name={[name, "attribute"]}
-                              rules={[{ required: true, message: "Chọn thuộc tính" }]}
+                              rules={[
+                                { required: true, message: "Chọn thuộc tính" },
+                              ]}
                             >
                               <Select
                                 placeholder="Chọn thuộc tính"
                                 showSearch
                                 optionFilterProp="children"
-                                // Disable option nếu đã được chọn ở dòng khác
                                 filterOption={(input, option) => {
                                   const opt = option as any;
                                   return typeof opt?.children === "string"
-                                    ? opt.children.toLowerCase().includes(input.toLowerCase())
+                                    ? opt.children
+                                        .toLowerCase()
+                                        .includes(input.toLowerCase())
                                     : false;
                                 }}
                               >
@@ -506,7 +650,6 @@ export const ProductVariantEdit = () => {
                                     key={attr.slug}
                                     value={attr.slug}
                                     disabled={
-                                      // Disable nếu đã chọn ở dòng khác, trừ dòng hiện tại
                                       selectedSlugs.includes(attr.slug) &&
                                       currentAttrSlug !== attr.slug
                                     }
@@ -521,13 +664,11 @@ export const ProductVariantEdit = () => {
                             <Form.Item
                               {...restField}
                               name={[name, "value"]}
-                              rules={[{ required: true, message: "Chọn giá trị" }]}
+                              rules={[
+                                { required: true, message: "Chọn giá trị" },
+                              ]}
                             >
-                              <Select
-                                placeholder="Chọn giá trị"
-                                allowClear
-                               
-                              >
+                              <Select placeholder="Chọn giá trị" allowClear>
                                 {(attrObj?.values || []).map((val: string) => (
                                   <Select.Option key={val} value={val}>
                                     {val}
@@ -550,23 +691,27 @@ export const ProductVariantEdit = () => {
                       <Button
                         type="dashed"
                         onClick={() => {
-                          // Lấy các slug đã chọn
                           const selectedSlugs = fields
                             .map(({ name }) =>
-                              formProps.form?.getFieldValue(["attributes", name, "attribute"])
+                              formProps.form?.getFieldValue([
+                                "attributes",
+                                name,
+                                "attribute",
+                              ])
                             )
                             .filter(Boolean);
 
-                          // Tìm thuộc tính đầu tiên chưa được chọn
                           const firstAvailable = attributeList.find(
                             (attr) => !selectedSlugs.includes(attr.slug)
                           );
 
-                          // Thêm dòng mới và set thuộc tính luôn nếu có
                           const idx = fields.length;
                           add(
                             firstAvailable
-                              ? { attribute: firstAvailable.slug, value: undefined }
+                              ? {
+                                  attribute: firstAvailable.slug,
+                                  value: undefined,
+                                }
                               : {}
                           );
                         }}
@@ -589,5 +734,3 @@ export const ProductVariantEdit = () => {
     </Edit>
   );
 };
-
-

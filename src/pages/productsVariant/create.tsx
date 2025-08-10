@@ -22,6 +22,7 @@ import { UploadFile } from "antd/lib/upload/interface";
 interface Size {
   size: string;
   stock: number;
+  price: number; // Thêm price vào Size interface
 }
 interface Color {
   baseColor: string;
@@ -31,7 +32,6 @@ interface Color {
 interface FormValues {
   productId: string;
   sku: string;
-  price: number;
   color: Color;
   sizes: Size[];
   status: string;
@@ -47,6 +47,8 @@ export const ProductVariantCreate = () => {
   const [productSku, setSku] = useState<string>("");
   const navigate = useNavigate();
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
+  const [priceMode, setPriceMode] = useState<"single" | "multiple">("single"); // Chế độ giá
+  const [commonPrice, setCommonPrice] = useState<number>(0); // Giá chung
 
   const { formProps, saveButtonProps } = useForm<FormValues>({
     resource: "product-variants",
@@ -102,7 +104,6 @@ export const ProductVariantCreate = () => {
 
       formData.append("productId", id || "");
       formData.append("sku", values.sku);
-      formData.append("price", values.price.toString());
       formData.append("color.baseColor", values.color.baseColor);
       formData.append("color.actualColor", values.color.actualColor);
       formData.append("color.colorName", values.color.colorName);
@@ -111,6 +112,9 @@ export const ProductVariantCreate = () => {
       values.sizes.forEach((sizeObj: Size, i: number) => {
         formData.append(`sizes[${i}][size]`, sizeObj.size);
         formData.append(`sizes[${i}][stock]`, sizeObj.stock.toString());
+        // Sử dụng giá chung hoặc giá riêng tùy theo chế độ
+        const price = priceMode === "single" ? commonPrice : sizeObj.price;
+        formData.append(`sizes[${i}][price]`, price.toString());
       });
 
       if (mainImage[0]?.originFileObj) {
@@ -142,9 +146,38 @@ export const ProductVariantCreate = () => {
       setMainImage([]);
       setHoverImage([]);
       setProductImages([]);
+      setCommonPrice(0);
+      setPriceMode("single");
     } catch (err) {
       message.error("Lỗi khi tạo variant!");
       console.error(err);
+    }
+  };
+
+  // Hàm cập nhật giá cho tất cả size khi thay đổi giá chung
+  const handleCommonPriceChange = (price: number) => {
+    setCommonPrice(price);
+    if (priceMode === "single" && formProps.form) {
+      const sizes = formProps.form.getFieldValue("sizes") || [];
+      const updatedSizes = sizes.map((size: Size) => ({
+        ...size,
+        price: price,
+      }));
+      formProps.form.setFieldValue("sizes", updatedSizes);
+    }
+  };
+
+  // Hàm thay đổi chế độ giá
+  const handlePriceModeChange = (mode: "single" | "multiple") => {
+    setPriceMode(mode);
+    if (mode === "single" && formProps.form) {
+      // Khi chuyển sang chế độ giá chung, cập nhật tất cả size với giá chung
+      const sizes = formProps.form.getFieldValue("sizes") || [];
+      const updatedSizes = sizes.map((size: Size) => ({
+        ...size,
+        price: commonPrice,
+      }));
+      formProps.form.setFieldValue("sizes", updatedSizes);
     }
   };
 
@@ -173,6 +206,7 @@ export const ProductVariantCreate = () => {
             sizes: ["S", "M", "L", "XL", "XXL"].map((size) => ({
               size,
               stock: 0,
+              price: 0, // Thêm giá mặc định cho từng size
             })),
             color: {
               actualColor: "#000000",
@@ -190,13 +224,6 @@ export const ProductVariantCreate = () => {
               </Form.Item>
               <Form.Item label="SKU" name="sku">
                 <Input value={productSku} disabled />
-              </Form.Item>
-              <Form.Item
-                label="Giá"
-                name="price"
-                rules={[{ required: true, message: "Vui lòng nhập giá" }]}
-              >
-                <InputNumber min={0} style={{ width: "100%" }} />
               </Form.Item>
               <Form.Item
                 label="Trạng thái"
@@ -294,10 +321,57 @@ export const ProductVariantCreate = () => {
             </Col>
           </Row>
 
-          <Card type="inner" title="Kích thước" style={{ marginTop: 16 }}>
+          <Card
+            type="inner"
+            title="Kích thước và Giá"
+            style={{ marginTop: 16 }}
+          >
+            {/* Chọn chế độ giá */}
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={12}>
+                <Form.Item label="Chế độ giá">
+                  <Select
+                    value={priceMode}
+                    onChange={handlePriceModeChange}
+                    style={{ width: "100%" }}
+                  >
+                    <Select.Option value="single">
+                      Giá chung cho tất cả size
+                    </Select.Option>
+                    <Select.Option value="multiple">
+                      Giá riêng cho từng size
+                    </Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              {priceMode === "single" && (
+                <Col span={12}>
+                  <Form.Item
+                    label="Giá chung (VNĐ)"
+                    rules={[
+                      { required: true, message: "Vui lòng nhập giá chung" },
+                    ]}
+                  >
+                    <InputNumber
+                      min={0}
+                      style={{ width: "100%" }}
+                      value={commonPrice}
+                      onChange={(value) => handleCommonPriceChange(value || 0)}
+                      placeholder="Nhập giá cho tất cả size"
+                      formatter={(value) =>
+                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      }
+                      parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                    />
+                  </Form.Item>
+                </Col>
+              )}
+            </Row>
+
             <Row gutter={[16, 8]} style={{ fontWeight: 500, padding: "8px 0" }}>
               <Col span={6}>Size</Col>
-              <Col span={18}>Số lượng</Col>
+              <Col span={priceMode === "single" ? 18 : 9}>Số lượng</Col>
+              {priceMode === "multiple" && <Col span={9}>Giá (VNĐ)</Col>}
             </Row>
             {["S", "M", "L", "XL", "XXL"].map((size, index) => (
               <Row
@@ -315,7 +389,7 @@ export const ProductVariantCreate = () => {
                     <Input disabled />
                   </Form.Item>
                 </Col>
-                <Col span={18}>
+                <Col span={priceMode === "single" ? 18 : 9}>
                   <Form.Item
                     name={["sizes", index, "stock"]}
                     rules={[
@@ -333,6 +407,39 @@ export const ProductVariantCreate = () => {
                     />
                   </Form.Item>
                 </Col>
+                {priceMode === "multiple" && (
+                  <Col span={9}>
+                    <Form.Item
+                      name={["sizes", index, "price"]}
+                      rules={[
+                        {
+                          required: true,
+                          message: `Nhập giá cho size ${size}`,
+                        },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <InputNumber
+                        min={0}
+                        style={{ width: "100%" }}
+                        placeholder={`Giá size ${size}`}
+                        formatter={(value) =>
+                          `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                        }
+                        parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                      />
+                    </Form.Item>
+                  </Col>
+                )}
+                {/* Hidden price field cho chế độ single */}
+                {priceMode === "single" && (
+                  <Form.Item
+                    name={["sizes", index, "price"]}
+                    style={{ display: "none" }}
+                  >
+                    <InputNumber />
+                  </Form.Item>
+                )}
               </Row>
             ))}
           </Card>
