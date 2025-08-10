@@ -29,14 +29,26 @@ const getStatusColor = (status: any) => {
       return "cyan";
     case "Giao hàng thành công":
       return "green";
+    case "Đã nhận hàng":
+      return "lime";
     case "Giao hàng thất bại":
       return "volcano";
     case "Chờ thanh toán":
       return "gold";
     case "Đã thanh toán":
       return "purple";
+    case "Thanh toán khi nhận hàng":
+      return "geekblue";
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
+    case "Khiếu nại":
+      return "orange";
+    case "Đang xử lý khiếu nại":
+      return "processing";
+    case "Khiếu nại được giải quyết":
+      return "success";
+    case "Khiếu nại bị từ chối":
+      return "error";
     default:
       return "default";
   }
@@ -54,8 +66,7 @@ export const OrderShow = () => {
   });
   const userInfo = userQuery?.data?.data;
 
-  const formatCurrency = (amount: number) =>
-    `${amount?.toLocaleString()}đ`;
+  const formatCurrency = (amount: number) => `${amount?.toLocaleString()}đ`;
 
   return (
     <Show isLoading={isLoading}>
@@ -63,53 +74,72 @@ export const OrderShow = () => {
         {/* Danh sách sản phẩm */}
         <Col span={14}>
           <Card title="Tất cả sản phẩm">
-            {record?.items?.map((item: any, index: number) => (
-              <Card
-                key={index}
-                type="inner"
-                style={{ marginBottom: 16 }}
-                bodyStyle={{ padding: 16 }}
-              >
-                <Row align="middle" gutter={16}>
-                  <Col>
-                    <Image
-                      width={90}
-                      src={item.productVariantId?.images?.main?.url}
-                      alt={item.productName}
-                      style={{ borderRadius: 8, border: "1px solid #eee" }}
-                    />
-                  </Col>
-                  <Col flex="auto">
-                    <div style={{ marginBottom: 4 }}>
-                      <Text strong>{item.productName}</Text>
-                    </div>
-                    <div style={{ marginBottom: 4 }}>
-                      <span>
-                        <b>Size:</b> {item.size} &nbsp;|&nbsp;
-                        <b>SL:</b> {item.quantity} &nbsp;|&nbsp;
-                        <b>Giá:</b> {formatCurrency(item.price)}
-                      </span>
-                    </div>
-                    <div>
-                      <span>
-                        <b>Màu:</b>{" "}
-                        <Tag
-                          style={{
-                            background: item.productVariantId?.color?.actualColor,
-                            color: "#333",
-                            border: "none",
-                            minWidth: 60,
-                            display: "inline-block",
-                          }}
-                        >
-                          {item.productVariantId?.color?.colorName || "--"}
-                        </Tag>
-                      </span>
-                    </div>
-                  </Col>
-                </Row>
-              </Card>
-            ))}
+            {record?.items?.map((item: any, index: number) => {
+              // Lấy dữ liệu từ snapshot productInfo trước, fallback về productVariantId
+              const productData = item.productInfo || item.productVariantId;
+              const productName =
+                item.productInfo?.productName ||
+                item.productInfo?.product?.name ||
+                item.productName ||
+                "Không có tên";
+              const productImage = productData?.images?.main?.url;
+              const productColor = productData?.color;
+
+              // Tìm giá theo size từ snapshot
+              const sizeData = productData?.sizes?.find(
+                (s: any) => s.size === item.size
+              );
+              const price = sizeData?.price || item.price || 0;
+
+              return (
+                <Card
+                  key={index}
+                  type="inner"
+                  style={{ marginBottom: 16 }}
+                  bodyStyle={{ padding: 16 }}
+                >
+                  <Row align="middle" gutter={16}>
+                    <Col>
+                      <Image
+                        width={90}
+                        src={productImage}
+                        alt={productName}
+                        style={{ borderRadius: 8, border: "1px solid #eee" }}
+                      />
+                    </Col>
+                    <Col flex="auto">
+                      <div style={{ marginBottom: 4 }}>
+                        <Text strong>{productName}</Text>
+                      </div>
+                      <div style={{ marginBottom: 4 }}>
+                        <span>
+                          <b>Size:</b> {item.size} &nbsp;|&nbsp;
+                          <b>SL:</b> {item.quantity} &nbsp;|&nbsp;
+                          <b>Giá:</b> {formatCurrency(price)}
+                        </span>
+                      </div>
+                      <div>
+                        <span>
+                          <b>Màu:</b>{" "}
+                          <Tag
+                            style={{
+                              background:
+                                productColor?.actualColor || "#f0f0f0",
+                              color: "#333",
+                              border: "none",
+                              minWidth: 60,
+                              display: "inline-block",
+                            }}
+                          >
+                            {productColor?.colorName || "--"}
+                          </Tag>
+                        </span>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
+              );
+            })}
           </Card>
 
           <Card title="Tổng giỏ hàng" style={{ marginTop: 24 }}>
@@ -142,9 +172,14 @@ export const OrderShow = () => {
               <Descriptions.Item label="Mã đơn">
                 {record?.orderId}
               </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                <Tag color={getStatusColor(record?.status)}>
-                  {record?.status}
+              <Descriptions.Item label="TT Thanh toán">
+                <Tag color={getStatusColor(record?.paymentStatus)}>
+                  {record?.paymentStatus}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="TT Giao hàng">
+                <Tag color={getStatusColor(record?.shippingStatus)}>
+                  {record?.shippingStatus}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Ngày đặt">
@@ -167,6 +202,54 @@ export const OrderShow = () => {
             </Descriptions>
           </Card>
 
+          {/* Thông tin khiếu nại (nếu có) */}
+          {record?.complaint && (
+            <Card title="Thông tin khiếu nại" style={{ marginTop: 24 }}>
+              <Descriptions column={1}>
+                <Descriptions.Item label="Lý do">
+                  {record.complaint.reason}
+                </Descriptions.Item>
+                <Descriptions.Item label="Mô tả">
+                  {record.complaint.description}
+                </Descriptions.Item>
+                <Descriptions.Item label="Trạng thái">
+                  <Tag
+                    color={
+                      record.complaint.status === "Được chấp nhận"
+                        ? "green"
+                        : record.complaint.status === "Bị từ chối"
+                        ? "red"
+                        : record.complaint.status === "Đang xử lý"
+                        ? "blue"
+                        : "orange"
+                    }
+                  >
+                    {record.complaint.status}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Ngày tạo">
+                  {record.complaint.createdAt &&
+                    new Date(record.complaint.createdAt).toLocaleString()}
+                </Descriptions.Item>
+                {record.complaint.adminNote && (
+                  <Descriptions.Item label="Ghi chú admin">
+                    {record.complaint.adminNote}
+                  </Descriptions.Item>
+                )}
+                {record.complaint.resolution && (
+                  <Descriptions.Item label="Cách giải quyết">
+                    {record.complaint.resolution}
+                  </Descriptions.Item>
+                )}
+                {record.complaint.processedAt && (
+                  <Descriptions.Item label="Ngày xử lý">
+                    {new Date(record.complaint.processedAt).toLocaleString()}
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+            </Card>
+          )}
+
           {/* Thông tin người nhận */}
           <Card title="Thông tin người nhận" style={{ marginTop: 24 }}>
             <Descriptions column={1}>
@@ -178,7 +261,13 @@ export const OrderShow = () => {
               </Descriptions.Item>
               <Descriptions.Item label="Địa chỉ">
                 {record?.receiver
-                  ? `${record.receiver.address}, ${record.receiver.communeName || record.receiver.wardName || ""}, ${record.receiver.districtName}, ${record.receiver.cityName}`
+                  ? `${record.receiver.address}, ${
+                      record.receiver.communeName ||
+                      record.receiver.wardName ||
+                      ""
+                    }, ${record.receiver.districtName}, ${
+                      record.receiver.cityName
+                    }`
                   : "--"}
               </Descriptions.Item>
             </Descriptions>
@@ -189,7 +278,9 @@ export const OrderShow = () => {
             <Descriptions column={1}>
               <Descriptions.Item label="Họ tên">
                 {userInfo
-                  ? `${userInfo.first_name ? userInfo.first_name + " " : ""}${userInfo.name || ""}`.trim() || "--"
+                  ? `${userInfo.first_name ? userInfo.first_name + " " : ""}${
+                      userInfo.name || ""
+                    }`.trim() || "--"
                   : "--"}
               </Descriptions.Item>
               <Descriptions.Item label="Email">
@@ -219,6 +310,3 @@ export const OrderShow = () => {
     </Show>
   );
 };
-
-
-

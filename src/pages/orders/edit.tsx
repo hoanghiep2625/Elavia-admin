@@ -3,7 +3,17 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Edit, useForm } from "@refinedev/antd";
 import { useOne } from "@refinedev/core";
-import { Form, Input, Select, Typography, Row, Col, Card, Tag, List } from "antd";
+import {
+  Form,
+  Input,
+  Select,
+  Typography,
+  Row,
+  Col,
+  Card,
+  Tag,
+  List,
+} from "antd";
 
 const { Title, Text } = Typography;
 
@@ -20,14 +30,26 @@ const getStatusColor = (status: string) => {
       return "cyan";
     case "Giao hàng thành công":
       return "green";
+    case "Đã nhận hàng":
+      return "lime";
     case "Giao hàng thất bại":
       return "volcano";
     case "Chờ thanh toán":
       return "gold";
     case "Đã thanh toán":
       return "purple";
+    case "Thanh toán khi nhận hàng":
+      return "geekblue";
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
+    case "Khiếu nại":
+      return "orange";
+    case "Đang xử lý khiếu nại":
+      return "processing";
+    case "Khiếu nại được giải quyết":
+      return "success";
+    case "Khiếu nại bị từ chối":
+      return "error";
     default:
       return "default";
   }
@@ -63,7 +85,9 @@ export const OrderEdit = () => {
   // Lấy dữ liệu tỉnh/thành phố
   useEffect(() => {
     axios
-      .get("https://raw.githubusercontent.com/kenzouno1/DiaGioiHanhChinhVN/master/data.json")
+      .get(
+        "https://raw.githubusercontent.com/kenzouno1/DiaGioiHanhChinhVN/master/data.json"
+      )
       .then((res) => setCities(res.data));
   }, []);
 
@@ -81,7 +105,9 @@ export const OrderEdit = () => {
       setDistricts(city?.Districts || []);
       // Nếu có sẵn districtName thì set
       if (order?.receiver?.districtName) {
-        const district = city?.Districts?.find((d:any) => d.Name === order.receiver.districtName);
+        const district = city?.Districts?.find(
+          (d: any) => d.Name === order.receiver.districtName
+        );
         if (district) setSelectedDistrict(district.Id);
       }
     } else {
@@ -98,7 +124,9 @@ export const OrderEdit = () => {
       setWards(district?.Wards || []);
       // Nếu có sẵn wardName thì set
       if (order?.receiver?.wardName) {
-        const ward = district?.Wards?.find((w:any) => w.Name === order.receiver.wardName);
+        const ward = district?.Wards?.find(
+          (w: any) => w.Name === order.receiver.wardName
+        );
         if (ward) setSelectedWard(ward.Id);
       }
     } else {
@@ -168,7 +196,11 @@ export const OrderEdit = () => {
               <div style={{ marginLeft: 16 }}>
                 <div style={{ marginBottom: 8 }}>
                   <strong>Họ tên:</strong>
-                  <div>{[userInfo?.first_name, userInfo?.name].filter(Boolean).join(" ") || "--"}</div>
+                  <div>
+                    {[userInfo?.first_name, userInfo?.name]
+                      .filter(Boolean)
+                      .join(" ") || "--"}
+                  </div>
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <strong>Email:</strong>
@@ -178,7 +210,6 @@ export const OrderEdit = () => {
                   <strong>Số điện thoại:</strong>
                   <div>{userInfo?.phone || order?.user?.phone || "--"}</div>
                 </div>
-               
               </div>
             </Card>
           </Col>
@@ -189,7 +220,9 @@ export const OrderEdit = () => {
               <Form.Item
                 label="Tên khách hàng"
                 name={["receiver", "name"]}
-                rules={[{ required: true, message: "Vui lòng nhập tên khách hàng" }]}
+                rules={[
+                  { required: true, message: "Vui lòng nhập tên khách hàng" },
+                ]}
               >
                 <Input />
               </Form.Item>
@@ -214,11 +247,16 @@ export const OrderEdit = () => {
                 <Input placeholder="Số nhà, đường..." />
               </Form.Item>
               <Row gutter={8}>
-                  <Col span={8}>
+                <Col span={8}>
                   <Form.Item
                     label="Tỉnh/Thành phố"
                     name={["receiver", "cityName"]}
-                    rules={[{ required: true, message: "Vui lòng chọn tỉnh/thành phố" }]}
+                    rules={[
+                      {
+                        required: true,
+                        message: "Vui lòng chọn tỉnh/thành phố",
+                      },
+                    ]}
                   >
                     <Select
                       showSearch
@@ -232,7 +270,9 @@ export const OrderEdit = () => {
                             : Array.isArray(option?.children)
                             ? option.children.join(" ")
                             : "";
-                        return label.toLowerCase().includes(input.toLowerCase());
+                        return label
+                          .toLowerCase()
+                          .includes(input.toLowerCase());
                       }}
                     >
                       {cities.map((c) => (
@@ -247,7 +287,9 @@ export const OrderEdit = () => {
                   <Form.Item
                     label="Quận/Huyện"
                     name={["receiver", "districtName"]}
-                    rules={[{ required: true, message: "Vui lòng chọn quận/huyện" }]}
+                    rules={[
+                      { required: true, message: "Vui lòng chọn quận/huyện" },
+                    ]}
                   >
                     <Select
                       showSearch
@@ -262,7 +304,9 @@ export const OrderEdit = () => {
                             : Array.isArray(option?.children)
                             ? option.children.join(" ")
                             : "";
-                        return label.toLowerCase().includes(input.toLowerCase());
+                        return label
+                          .toLowerCase()
+                          .includes(input.toLowerCase());
                       }}
                     >
                       {districts.map((d) => (
@@ -273,12 +317,14 @@ export const OrderEdit = () => {
                     </Select>
                   </Form.Item>
                 </Col>
-             
-                 <Col span={8}>
+
+                <Col span={8}>
                   <Form.Item
                     label="Phường/Xã"
                     name={["receiver", "wardName"]}
-                    rules={[{ required: true, message: "Vui lòng chọn phường/xã" }]}
+                    rules={[
+                      { required: true, message: "Vui lòng chọn phường/xã" },
+                    ]}
                   >
                     <Select
                       showSearch
@@ -293,7 +339,9 @@ export const OrderEdit = () => {
                             : Array.isArray(option?.children)
                             ? option.children.join(" ")
                             : "";
-                        return label.toLowerCase().includes(input.toLowerCase());
+                        return label
+                          .toLowerCase()
+                          .includes(input.toLowerCase());
                       }}
                     >
                       {wards.map((w) => (
@@ -314,14 +362,18 @@ export const OrderEdit = () => {
           <Row gutter={24}>
             <Col span={8}>
               <div style={{ marginBottom: 16 }}>
-                <span style={{ fontWeight: 600, color: "#1677ff" }}>Mã đơn hàng</span>
+                <span style={{ fontWeight: 600, color: "#1677ff" }}>
+                  Mã đơn hàng
+                </span>
                 <br />
                 <Text strong>{order?.orderId || "--"}</Text>
               </div>
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 16 }}>
-                <span style={{ fontWeight: 600, color: "#1677ff" }}>Tổng tiền</span>
+                <span style={{ fontWeight: 600, color: "#1677ff" }}>
+                  Tổng tiền
+                </span>
                 <br />
                 <Text strong>
                   {order?.finalAmount?.toLocaleString("vi-VN") + "đ" || "--"}
@@ -343,86 +395,153 @@ export const OrderEdit = () => {
           <Form.Item label="Sản phẩm">
             <List
               dataSource={order?.items || []}
-              renderItem={(item: any) => (
-                <List.Item>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <img
-                      src={item.productVariantId?.images?.main?.url}
-                      alt={item.productName}
-                      style={{
-                        width: 60,
-                        height: 60,
-                        objectFit: "cover",
-                        borderRadius: 6,
-                        border: "1px solid #eee",
-                      }}
-                    />
-                    <div>
+              renderItem={(item: any) => {
+                // Lấy dữ liệu từ snapshot productInfo trước, fallback về productVariantId
+                const productData = item.productInfo || item.productVariantId;
+                const productName =
+                  item.productInfo?.productName ||
+                  item.productInfo?.product?.name ||
+                  item.productName ||
+                  "Không có tên";
+                const productImage = productData?.images?.main?.url;
+                const productColor = productData?.color;
+
+                // Tìm giá theo size từ snapshot
+                const sizeData = productData?.sizes?.find(
+                  (s: any) => s.size === item.size
+                );
+                const price = sizeData?.price || item.price || 0;
+
+                return (
+                  <List.Item>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 16 }}
+                    >
+                      <img
+                        src={productImage}
+                        alt={productName}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          objectFit: "cover",
+                          borderRadius: 6,
+                          border: "1px solid #eee",
+                        }}
+                      />
                       <div>
-                        <Text strong>{item.productName}</Text>
-                      </div>
-                      <div>
-                        <span>
-                          Size: <b>{item.size}</b> | SL: <b>{item.quantity}</b> | Giá:{" "}
-                          <b>{item.price?.toLocaleString("vi-VN")}đ</b>
-                        </span>
-                      </div>
-                      <div>
-                        <span>
-                          Màu:{" "}
-                          <Tag
-                            color="default"
-                            style={{
-                              background: item.productVariantId?.color?.actualColor,
-                              color: "#000",
-                              border: "none",
-                            }}
-                          >
-                            {item.productVariantId?.color?.colorName || "--"}
-                          </Tag>
-                        </span>
+                        <div>
+                          <Text strong>{productName}</Text>
+                        </div>
+                        <div>
+                          <span>
+                            Size: <b>{item.size}</b> | SL:{" "}
+                            <b>{item.quantity}</b> | Giá:{" "}
+                            <b>{price?.toLocaleString("vi-VN")}đ</b>
+                          </span>
+                        </div>
+                        <div>
+                          <span>
+                            Màu:{" "}
+                            <Tag
+                              color="default"
+                              style={{
+                                background:
+                                  productColor?.actualColor || "#f0f0f0",
+                                color: "#000",
+                                border: "none",
+                                minWidth: 60,
+                              }}
+                            >
+                              {productColor?.colorName || "--"}
+                            </Tag>
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </List.Item>
-              )}
+                  </List.Item>
+                );
+              }}
               locale={{ emptyText: "Không có sản phẩm" }}
             />
           </Form.Item>
         </Card>
 
         {/* Trạng thái đơn hàng */}
-        <Form.Item
-          label="Trạng thái đơn hàng"
-          name="status"
-          style={{ marginTop: 24 }}
-          rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-        >
-          <Select>
-            {[
-              "Chờ xác nhận",
-              "Đã xác nhận",
-              "Đang giao hàng",
-              "Giao hàng thành công",
-              "Giao hàng thất bại",
-              "Đã thanh toán",
-              "Người mua huỷ",
-              "Người bán huỷ",
-              "Chờ thanh toán",
-              "Huỷ do quá thời gian thanh toán",
-            ].map((status) => (
-              <Select.Option key={status} value={status}>
-                <Tag color={getStatusColor(status)} style={{ marginRight: 8 }}>
-                  ●
-                </Tag>
-                {status}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+        <Row gutter={24} style={{ marginTop: 24 }}>
+          <Col span={12}>
+            <Form.Item
+              label="Trạng thái thanh toán"
+              name="paymentStatus"
+              rules={[
+                {
+                  required: true,
+                  message: "Vui lòng chọn trạng thái thanh toán",
+                },
+              ]}
+            >
+              <Select placeholder="Chọn trạng thái thanh toán">
+                {[
+                  "Chờ thanh toán",
+                  "Đã thanh toán",
+                  "Thanh toán khi nhận hàng",
+                  "Huỷ do quá thời gian thanh toán",
+                  "Người mua huỷ",
+                  "Người bán huỷ",
+                ].map((status) => (
+                  <Select.Option key={status} value={status}>
+                    <Tag
+                      color={getStatusColor(status)}
+                      style={{ marginRight: 8 }}
+                    >
+                      ●
+                    </Tag>
+                    {status}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="Trạng thái giao hàng"
+              name="shippingStatus"
+              rules={[
+                {
+                  required: true,
+                  message: "Vui lòng chọn trạng thái giao hàng",
+                },
+              ]}
+            >
+              <Select placeholder="Chọn trạng thái giao hàng">
+                {[
+                  "Chờ xác nhận",
+                  "Đã xác nhận",
+                  "Đang giao hàng",
+                  "Giao hàng thành công",
+                  "Giao hàng thất bại",
+                  "Đã nhận hàng",
+                  "Khiếu nại",
+                  "Đang xử lý khiếu nại",
+                  "Khiếu nại được giải quyết",
+                  "Khiếu nại bị từ chối",
+                  "Người mua huỷ",
+                  "Người bán huỷ",
+                ].map((status) => (
+                  <Select.Option key={status} value={status}>
+                    <Tag
+                      color={getStatusColor(status)}
+                      style={{ marginRight: 8 }}
+                    >
+                      ●
+                    </Tag>
+                    {status}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Edit>
   );
 };
-
-

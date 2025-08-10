@@ -1,7 +1,16 @@
 import React, { useState } from "react";
 import { List, DateField, ShowButton, EditButton } from "@refinedev/antd";
-import { Table, Tag, Input, Select, Button, Tooltip, Descriptions } from "antd";
-import { useCustom } from "@refinedev/core";
+import {
+  Table,
+  Tag,
+  Input,
+  Select,
+  Button,
+  Tooltip,
+  Descriptions,
+  message,
+} from "antd";
+import { useCustom, useUpdate, useInvalidate } from "@refinedev/core";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -16,17 +25,51 @@ const getStatusColor = (status: string) => {
       return "cyan";
     case "Giao hàng thành công":
       return "green";
+    case "Đã nhận hàng":
+      return "lime";
     case "Giao hàng thất bại":
       return "volcano";
     case "Chờ thanh toán":
       return "gold";
     case "Đã thanh toán":
       return "purple";
+    case "Thanh toán khi nhận hàng":
+      return "geekblue";
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
+    case "Khiếu nại":
+      return "orange";
+    case "Đang xử lý khiếu nại":
+      return "processing";
+    case "Khiếu nại được giải quyết":
+      return "success";
+    case "Khiếu nại bị từ chối":
+      return "error";
     default:
       return "default";
   }
+};
+
+// Helper function để lấy màu HEX từ Ant Design color token
+const getStatusDotColor = (colorToken: string) => {
+  const colorMap: Record<string, string> = {
+    orange: "#fa8c16",
+    blue: "#1677ff",
+    red: "#f5222d",
+    cyan: "#13c2c2",
+    green: "#52c41a",
+    lime: "#a0d911",
+    volcano: "#fa541c",
+    gold: "#faad14",
+    purple: "#722ed1",
+    geekblue: "#2f54eb",
+    magenta: "#eb2f96",
+    processing: "#1677ff",
+    success: "#52c41a",
+    error: "#f5222d",
+    default: "#d9d9d9",
+  };
+  return colorMap[colorToken] || "#d9d9d9";
 };
 
 export const OrderList = () => {
@@ -36,6 +79,91 @@ export const OrderList = () => {
   });
 
   const [sorter, setSorter] = useState<{ field?: string; order?: string }>({});
+
+  // Hook để update đơn hàng
+  const { mutate: updateOrder } = useUpdate();
+  const invalidate = useInvalidate();
+
+  // Logic xác định trạng thái có thể thay đổi được
+  const allowedPaymentStatusTransitions: Record<string, string[]> = {
+    "Chờ thanh toán": [
+      "Đã thanh toán",
+      "Huỷ do quá thời gian thanh toán",
+      "Người mua huỷ",
+      "Người bán huỷ",
+    ],
+    "Đã thanh toán": ["Người mua huỷ", "Người bán huỷ"],
+    "Thanh toán khi nhận hàng": [
+      "Đã thanh toán", // Khi giao hàng thành công
+      "Người mua huỷ",
+      "Người bán huỷ",
+    ],
+    "Huỷ do quá thời gian thanh toán": [],
+    "Người mua huỷ": [],
+    "Người bán huỷ": [],
+  };
+
+  const allowedShippingStatusTransitions: Record<string, string[]> = {
+    "Chờ xác nhận": ["Đã xác nhận", "Người mua huỷ", "Người bán huỷ"],
+    "Đã xác nhận": ["Đang giao hàng", "Người bán huỷ", "Người mua huỷ"],
+    "Đang giao hàng": [
+      "Giao hàng thành công",
+      "Giao hàng thất bại",
+      "Khiếu nại",
+      "Người bán huỷ",
+      "Người mua huỷ",
+    ],
+    "Giao hàng thành công": ["Đã nhận hàng", "Khiếu nại"],
+    "Đã nhận hàng": [],
+    "Giao hàng thất bại": ["Người bán huỷ", "Người mua huỷ", "Khiếu nại"],
+    "Khiếu nại": ["Đang xử lý khiếu nại"],
+    "Đang xử lý khiếu nại": [
+      "Khiếu nại được giải quyết",
+      "Khiếu nại bị từ chối",
+    ],
+    "Khiếu nại được giải quyết": [],
+    "Khiếu nại bị từ chối": [],
+    "Người mua huỷ": [],
+    "Người bán huỷ": [],
+  };
+
+  // Hàm xử lý thay đổi trạng thái
+  const handleStatusChange = (
+    orderId: string,
+    statusType: "payment" | "shipping",
+    newStatus: string,
+    currentData: any
+  ) => {
+    const updateData =
+      statusType === "payment"
+        ? { paymentStatus: newStatus }
+        : { shippingStatus: newStatus };
+
+    updateOrder(
+      {
+        resource: "orders",
+        id: orderId,
+        values: updateData,
+      },
+      {
+        onSuccess: () => {
+          message.success(
+            `Cập nhật trạng thái ${
+              statusType === "payment" ? "thanh toán" : "giao hàng"
+            } thành công`
+          );
+          // Refresh data
+          invalidate({
+            resource: "orders",
+            invalidates: ["list"],
+          });
+        },
+        onError: (error) => {
+          message.error(`Lỗi cập nhật trạng thái: ${error.message}`);
+        },
+      }
+    );
+  };
 
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingUser, setPendingUser] = useState("");
@@ -72,7 +200,11 @@ export const OrderList = () => {
   const tableData = data?.data?.data || [];
   const total = data?.data?.total || 0;
 
-  const handleTableChange = (paginationConfig: any, _: any, sorterConfig: any) => {
+  const handleTableChange = (
+    paginationConfig: any,
+    _: any,
+    sorterConfig: any
+  ) => {
     setPagination({
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize,
@@ -138,25 +270,49 @@ export const OrderList = () => {
           style={{ width: 160 }}
         />
         <Select
-          labelInValue
-          value={pendingStatus ? { label: pendingStatus, value: pendingStatus } : { label: "Trạng thái", value: "" }}
-          onChange={(val) => {
-            if (val.value !== "") setPendingStatus(val.value);
-          }}
+          placeholder="Trạng thái"
+          allowClear
+          value={pendingStatus}
+          onChange={(val) => setPendingStatus(val || "")}
           style={{ width: 180 }}
-          options={[
-            { value: "Chờ xác nhận", label: "Chờ xác nhận" },
-            { value: "Đã xác nhận", label: "Đã xác nhận" },
-            { value: "Người bán huỷ", label: "Người bán huỷ" },
-            { value: "Người mua huỷ", label: "Người mua huỷ" },
-            { value: "Đang giao hàng", label: "Đang giao hàng" },
-            { value: "Giao hàng thành công", label: "Giao hàng thành công" },
-            { value: "Giao hàng thất bại", label: "Giao hàng thất bại" },
-            { value: "Chờ thanh toán", label: "Chờ thanh toán" },
-            { value: "Đã thanh toán", label: "Đã thanh toán" },
-            { value: "Huỷ do quá thời gian thanh toán", label: "Huỷ do quá thời gian thanh toán" },
-          ]}
-        />
+        >
+          <Select.OptGroup label="Trạng thái thanh toán">
+            <Select.Option value="Chờ thanh toán">Chờ thanh toán</Select.Option>
+            <Select.Option value="Đã thanh toán">Đã thanh toán</Select.Option>
+            <Select.Option value="Thanh toán khi nhận hàng">
+              Thanh toán khi nhận hàng
+            </Select.Option>
+            <Select.Option value="Huỷ do quá thời gian thanh toán">
+              Huỷ do quá thời gian thanh toán
+            </Select.Option>
+          </Select.OptGroup>
+          <Select.OptGroup label="Trạng thái giao hàng">
+            <Select.Option value="Chờ xác nhận">Chờ xác nhận</Select.Option>
+            <Select.Option value="Đã xác nhận">Đã xác nhận</Select.Option>
+            <Select.Option value="Đang giao hàng">Đang giao hàng</Select.Option>
+            <Select.Option value="Giao hàng thành công">
+              Giao hàng thành công
+            </Select.Option>
+            <Select.Option value="Đã nhận hàng">Đã nhận hàng</Select.Option>
+            <Select.Option value="Giao hàng thất bại">
+              Giao hàng thất bại
+            </Select.Option>
+            <Select.Option value="Khiếu nại">Khiếu nại</Select.Option>
+            <Select.Option value="Đang xử lý khiếu nại">
+              Đang xử lý khiếu nại
+            </Select.Option>
+            <Select.Option value="Khiếu nại được giải quyết">
+              Khiếu nại được giải quyết
+            </Select.Option>
+            <Select.Option value="Khiếu nại bị từ chối">
+              Khiếu nại bị từ chối
+            </Select.Option>
+          </Select.OptGroup>
+          <Select.OptGroup label="Trạng thái hủy">
+            <Select.Option value="Người bán huỷ">Người bán huỷ</Select.Option>
+            <Select.Option value="Người mua huỷ">Người mua huỷ</Select.Option>
+          </Select.OptGroup>
+        </Select>
         <Button type="primary" onClick={handleSearch}>
           Tìm kiếm
         </Button>
@@ -194,7 +350,7 @@ export const OrderList = () => {
               overlayStyle={{ minWidth: 400, maxWidth: 600 }}
               overlayInnerStyle={{
                 background: "#222", // nền tối
-                color: "#fff",      // chữ trắng
+                color: "#fff", // chữ trắng
                 boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
                 borderRadius: 8,
                 border: "1px solid #444",
@@ -207,12 +363,22 @@ export const OrderList = () => {
                   contentStyle={{ color: "#fff" }}
                   labelStyle={{ color: "#bbb" }}
                 >
-                  <Descriptions.Item label="Mã đơn">{record?.orderId}</Descriptions.Item>
-                  <Descriptions.Item label="Trạng thái">
-                    <Tag color={getStatusColor(record?.status)}>{record?.status}</Tag>
+                  <Descriptions.Item label="Mã đơn">
+                    {record?.orderId}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="TT Thanh toán">
+                    <Tag color={getStatusColor(record?.paymentStatus)}>
+                      {record?.paymentStatus}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="TT Giao hàng">
+                    <Tag color={getStatusColor(record?.shippingStatus)}>
+                      {record?.shippingStatus}
+                    </Tag>
                   </Descriptions.Item>
                   <Descriptions.Item label="Ngày đặt">
-                    {record?.createdAt && new Date(record.createdAt).toLocaleString()}
+                    {record?.createdAt &&
+                      new Date(record.createdAt).toLocaleString()}
                   </Descriptions.Item>
                   <Descriptions.Item label="Tổng cộng">
                     {record?.finalAmount?.toLocaleString("vi-VN") + "đ"}
@@ -237,34 +403,29 @@ export const OrderList = () => {
                       ? "ZaloPay"
                       : record?.paymentMethod || "Không xác định"}
                   </Descriptions.Item>
-                  
                 </Descriptions>
               }
             >
-              <span style={{ color: "#1677ff", cursor: "pointer" }}>{record?.orderId}</span>
+              <span style={{ color: "#1677ff", cursor: "pointer" }}>
+                {record?.orderId}
+              </span>
             </Tooltip>
           )}
         />
         <Table.Column
           title="Họ tên"
           width={160}
-          render={(_, record: any) =>
-            record?.receiver?.name || "Không có"
-          }
+          render={(_, record: any) => record?.receiver?.name || "Không có"}
         />
         <Table.Column
           title="SĐT"
           width={120}
-          render={(_, record: any) =>
-            record?.receiver?.phone || "Không có"
-          }
+          render={(_, record: any) => record?.receiver?.phone || "Không có"}
         />
         <Table.Column
           title="Email(Người đặt)"
           width={200}
-          render={(_, record: any) =>
-            record?.user?.email || "Không có"
-          }
+          render={(_, record: any) => record?.user?.email || "Không có"}
         />
         <Table.Column
           title="Ngày đặt"
@@ -280,9 +441,7 @@ export const OrderList = () => {
           width={120}
           dataIndex="finalAmount"
           sorter={true}
-          render={(amount: number) =>
-            amount?.toLocaleString("vi-VN") + "đ"
-          }
+          render={(amount: number) => amount?.toLocaleString("vi-VN") + "đ"}
         />
         <Table.Column
           title="Phương thức TT"
@@ -303,15 +462,158 @@ export const OrderList = () => {
           }}
         />
         <Table.Column
-          title="Trạng thái"
-          width={160}
-          dataIndex="status"
+          title="TT Thanh toán"
+          width={180}
+          dataIndex="paymentStatus"
           sorter={true}
-          render={(status: string) => (
-            <Tag color={getStatusColor(status || "default")}>
-              {status || "Không xác định"}
-            </Tag>
-          )}
+          render={(status: string, record: any) => {
+            const allowedTransitions =
+              allowedPaymentStatusTransitions[status] || [];
+            const canChange = allowedTransitions.length > 0;
+
+            if (!canChange) {
+              // Không thể thay đổi - chỉ hiển thị Tag
+              return (
+                <Tag color={getStatusColor(status || "default")}>
+                  {status || "Không xác định"}
+                </Tag>
+              );
+            }
+
+            // Có thể thay đổi - hiển thị Select
+            return (
+              <Select
+                value={status}
+                style={{ width: "100%" }}
+                size="small"
+                onChange={(value) =>
+                  handleStatusChange(record._id, "payment", value, record)
+                }
+              >
+                <Select.Option value={status}>
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: getStatusDotColor(
+                          getStatusColor(status)
+                        ),
+                      }}
+                    ></span>
+                    {status}
+                  </span>
+                </Select.Option>
+                {allowedTransitions.map((nextStatus) => (
+                  <Select.Option key={nextStatus} value={nextStatus}>
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: getStatusDotColor(
+                            getStatusColor(nextStatus)
+                          ),
+                        }}
+                      ></span>
+                      {nextStatus}
+                    </span>
+                  </Select.Option>
+                ))}
+              </Select>
+            );
+          }}
+        />
+        <Table.Column
+          title="TT Giao hàng"
+          width={180}
+          dataIndex="shippingStatus"
+          sorter={true}
+          render={(status: string, record: any) => {
+            const allowedTransitions =
+              allowedShippingStatusTransitions[status] || [];
+            const canChange = allowedTransitions.length > 0;
+
+            if (!canChange) {
+              // Không thể thay đổi - chỉ hiển thị Tag
+              return (
+                <Tag color={getStatusColor(status || "default")}>
+                  {status || "Không xác định"}
+                </Tag>
+              );
+            }
+
+            // Có thể thay đổi - hiển thị Select
+            return (
+              <Select
+                value={status}
+                style={{ width: "100%" }}
+                size="small"
+                onChange={(value) =>
+                  handleStatusChange(record._id, "shipping", value, record)
+                }
+              >
+                <Select.Option value={status}>
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: getStatusDotColor(
+                          getStatusColor(status)
+                        ),
+                      }}
+                    ></span>
+                    {status}
+                  </span>
+                </Select.Option>
+                {allowedTransitions.map((nextStatus) => (
+                  <Select.Option key={nextStatus} value={nextStatus}>
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: getStatusDotColor(
+                            getStatusColor(nextStatus)
+                          ),
+                        }}
+                      ></span>
+                      {nextStatus}
+                    </span>
+                  </Select.Option>
+                ))}
+              </Select>
+            );
+          }}
         />
         <Table.Column
           title="Thao tác"
