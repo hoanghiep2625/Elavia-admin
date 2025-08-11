@@ -62,11 +62,13 @@ import {
   UserOutlined,
   GiftOutlined,
   DatabaseOutlined,
+  FileSearchOutlined,
 } from "@ant-design/icons";
 import { VoucherCreate } from "./pages/vochers/create";
 import { VoucherEdit } from "./pages/vochers/edit";
 import { VoucherShow } from "./pages/vochers/show";
 import { VoucherList } from "./pages/vochers/list";
+import { ReviewList } from "./pages/reviews";
 
 export const customDataProvider = simpleRestProvider(
   `${import.meta.env.VITE_API_URL}/admin`,
@@ -152,6 +154,15 @@ function App() {
                     edit: "/orders/edit/:id",
                     meta: {
                       icon: <ShoppingCartOutlined />,
+                    },
+                  },
+                  {
+                    name: "reviews",
+                    // options: { label: "Quản lý đánh giá" },
+                    list: "/reviews",
+                    meta: {
+                      canDelete: true,
+                      icon: <FileSearchOutlined />,
                     },
                   },
                   {
@@ -249,6 +260,9 @@ function App() {
                       <Route index element={<OrderList />} />
                       <Route path="edit/:id" element={<OrderEdit />} />
                       <Route path="show/:id" element={<OrderShow />} />
+                    </Route>
+                    <Route path="/reviews">
+                      <Route index element={<ReviewList />} />
                     </Route>
                     <Route path="/users">
                       <Route index element={<UserList />} />
