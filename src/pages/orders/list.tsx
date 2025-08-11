@@ -394,7 +394,7 @@ export const OrderList = () => {
                   <Descriptions.Item label="Email người đặt">
                     {record?.user?.email}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Phương thức TT">
+                  <Descriptions.Item label="PTTT">
                     {record?.paymentMethod === "COD"
                       ? "Thanh toán khi nhận hàng(COD)"
                       : record?.paymentMethod === "MoMo"
@@ -413,19 +413,21 @@ export const OrderList = () => {
           )}
         />
         <Table.Column
-          title="Họ tên"
-          width={160}
-          render={(_, record: any) => record?.receiver?.name || "Không có"}
-        />
-        <Table.Column
-          title="SĐT"
-          width={120}
-          render={(_, record: any) => record?.receiver?.phone || "Không có"}
-        />
-        <Table.Column
-          title="Email(Người đặt)"
+          title="Thông tin khách hàng"
           width={200}
-          render={(_, record: any) => record?.user?.email || "Không có"}
+          render={(_, record: any) => (
+            <div style={{ lineHeight: 1.4 }}>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                {record?.receiver?.name || "Không có"}
+              </div>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 2 }}>
+                {record?.receiver?.phone || "Không có"}
+              </div>
+              <div style={{ fontSize: 12, color: "#666" }}>
+                {record?.user?.email || "Không có"}
+              </div>
+            </div>
+          )}
         />
         <Table.Column
           title="Ngày đặt"
@@ -444,14 +446,14 @@ export const OrderList = () => {
           render={(amount: number) => amount?.toLocaleString("vi-VN") + "đ"}
         />
         <Table.Column
-          title="Phương thức TT"
+          title="PTTT"
           width={120}
           dataIndex="paymentMethod"
           sorter={true}
           render={(method: string) => {
             switch (method) {
               case "COD":
-                return "Thanh toán khi nhận hàng(COD)";
+                return "COD";
               case "MoMo":
                 return "MoMo";
               case "zalopay":
