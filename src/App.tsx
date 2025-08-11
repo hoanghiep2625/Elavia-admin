@@ -63,12 +63,14 @@ import {
   GiftOutlined,
   DatabaseOutlined,
   FileSearchOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 import { VoucherCreate } from "./pages/vochers/create";
 import { VoucherEdit } from "./pages/vochers/edit";
 import { VoucherShow } from "./pages/vochers/show";
 import { VoucherList } from "./pages/vochers/list";
 import { ReviewList } from "./pages/reviews";
+import { ChatManagement, ChatDetail } from "./pages/chat";
 
 export const customDataProvider = simpleRestProvider(
   `${import.meta.env.VITE_API_URL}/admin`,
@@ -187,6 +189,15 @@ function App() {
                     },
                   },
                   {
+                    name: "chat",
+                    list: "/chat",
+                    show: "/chat/show/:id",
+                    meta: {
+                      icon: <MessageOutlined />,
+                      label: "Chat hỗ trợ",
+                    },
+                  },
+                  {
                     name: "site-settings",
                     // options: { label: "Cài đặt website" },
                     list: SiteSettingsPage,
@@ -284,7 +295,11 @@ function App() {
                         path="/vouchers/show/:id"
                         element={<VoucherShow />}
                       />
-                    </Route>{" "}
+                    </Route>
+                    <Route path="/chat">
+                      <Route index element={<ChatManagement />} />
+                      <Route path="show/:id" element={<ChatDetail />} />
+                    </Route>
                     <Route
                       path="/site-settings"
                       element={<SiteSettingsPage />}
