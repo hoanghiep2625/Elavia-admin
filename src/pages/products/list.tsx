@@ -34,8 +34,8 @@ export const ProductList = () => {
       query: {
         _page: pagination.current,
         _limit: pagination.pageSize,
-        _sort: sorter.field || "createdAt", 
-        _order: sorter.order || "desc",     
+        _sort: sorter.field || "createdAt",
+        _order: sorter.order || "desc",
         ...(filters._name ? { _name: filters._name } : {}),
         ...(filters._sku ? { _sku: filters._sku } : {}),
       },
@@ -196,10 +196,25 @@ export const ProductList = () => {
         <Table.Column
           title="Giá"
           render={(_, record: any) => {
+            // Lấy giá từ size nhỏ nhất của representativeVariant
+            let price = 0;
+            if (
+              record.representativeVariantId?.sizes &&
+              record.representativeVariantId.sizes.length > 0
+            ) {
+              const sizeOrder = ["S", "M", "L", "XL", "XXL"];
+              const sortedSizes = record.representativeVariantId.sizes.sort(
+                (a: any, b: any) => {
+                  return sizeOrder.indexOf(a.size) - sizeOrder.indexOf(b.size);
+                }
+              );
+              price = sortedSizes[0]?.price || 0;
+            }
+
             return new Intl.NumberFormat("vi-VN", {
               style: "currency",
               currency: "VND",
-            }).format(record.representativeVariantId?.price || 0);
+            }).format(price);
           }}
         />
         <Table.Column

@@ -18,7 +18,11 @@ import {
 } from "antd";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { UploadOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  UploadOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import axios from "axios";
 import { UploadFile } from "antd/lib/upload/interface";
 import { useNavigate } from "react-router";
@@ -57,9 +61,21 @@ const VariantForm = ({
   isRemovable,
 }: any) => {
   // Quản lý ảnh riêng cho từng biến thể
-  const [mainImage, setMainImage] = useState<UploadFile[]>(variant.mainImage || []);
-  const [hoverImage, setHoverImage] = useState<UploadFile[]>(variant.hoverImage || []);
-  const [productImages, setProductImages] = useState<UploadFile[]>(variant.productImages || []);
+  const [mainImage, setMainImage] = useState<UploadFile[]>(
+    variant.mainImage || []
+  );
+  const [hoverImage, setHoverImage] = useState<UploadFile[]>(
+    variant.hoverImage || []
+  );
+  const [productImages, setProductImages] = useState<UploadFile[]>(
+    variant.productImages || []
+  );
+  const [priceMode, setPriceMode] = useState<"single" | "multiple">(
+    variant.priceMode || "single"
+  );
+  const [commonPrice, setCommonPrice] = useState<number>(
+    variant.commonPrice || 0
+  );
 
   useEffect(() => {
     onChange(index, {
@@ -67,9 +83,11 @@ const VariantForm = ({
       mainImage,
       hoverImage,
       productImages,
+      priceMode,
+      commonPrice,
     });
     // eslint-disable-next-line
-  }, [mainImage, hoverImage, productImages]);
+  }, [mainImage, hoverImage, productImages, priceMode, commonPrice]);
 
   // Xử lý thay đổi trường
   const handleFieldChange = (field: string, value: any) => {
@@ -88,10 +106,41 @@ const VariantForm = ({
   };
 
   // Xử lý thay đổi size
-  const handleSizeChange = (sizeIndex: number, value: number) => {
+  const handleSizeChange = (
+    sizeIndex: number,
+    field: "stock" | "price",
+    value: number
+  ) => {
     const sizes = [...variant.sizes];
-    sizes[sizeIndex].stock = value;
+    sizes[sizeIndex][field] = value;
     onChange(index, { ...variant, sizes });
+  };
+
+  // Hàm cập nhật giá cho tất cả size khi thay đổi giá chung
+  const handleCommonPriceChange = (price: number) => {
+    setCommonPrice(price);
+    if (priceMode === "single") {
+      const sizes = variant.sizes.map((size: any) => ({
+        ...size,
+        price: price,
+      }));
+      onChange(index, { ...variant, sizes, commonPrice: price });
+    }
+  };
+
+  // Hàm thay đổi chế độ giá
+  const handlePriceModeChange = (mode: "single" | "multiple") => {
+    setPriceMode(mode);
+    if (mode === "single") {
+      // Khi chuyển sang chế độ giá chung, cập nhật tất cả size với giá chung
+      const sizes = variant.sizes.map((size: any) => ({
+        ...size,
+        price: commonPrice,
+      }));
+      onChange(index, { ...variant, sizes, priceMode: mode, commonPrice });
+    } else {
+      onChange(index, { ...variant, priceMode: mode });
+    }
   };
 
   // Xử lý thuộc tính động
@@ -112,7 +161,11 @@ const VariantForm = ({
     Object.keys(newAttrs).forEach((k) => {
       if (!selected.includes(k)) delete newAttrs[k];
     });
-    onChange(index, { ...variant, selectedAttributes: selected, attributes: newAttrs });
+    onChange(index, {
+      ...variant,
+      selectedAttributes: selected,
+      attributes: newAttrs,
+    });
   };
 
   return (
@@ -138,20 +191,6 @@ const VariantForm = ({
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
-            label="Giá"
-            required
-            validateStatus={variant.errors?.price ? "error" : ""}
-            help={variant.errors?.price}
-          >
-            <InputNumber
-              min={0}
-              style={{ width: "100%" }}
-              value={variant.price}
-              onChange={(v) => handleFieldChange("price", v)}
-              placeholder="Nhập giá"
-            />
-          </Form.Item>
-          <Form.Item
             label="Trạng thái biến thể"
             required
             validateStatus={variant.errors?.status ? "error" : ""}
@@ -174,7 +213,9 @@ const VariantForm = ({
           >
             <Input
               value={variant.color?.colorName}
-              onChange={(e) => handleNestedChange("color", "colorName", e.target.value)}
+              onChange={(e) =>
+                handleNestedChange("color", "colorName", e.target.value)
+              }
               placeholder="Nhập tên màu"
             />
           </Form.Item>
@@ -187,7 +228,9 @@ const VariantForm = ({
             <Input
               type="color"
               value={variant.color?.actualColor}
-              onChange={(e) => handleNestedChange("color", "actualColor", e.target.value)}
+              onChange={(e) =>
+                handleNestedChange("color", "actualColor", e.target.value)
+              }
             />
           </Form.Item>
           <Form.Item
@@ -219,7 +262,12 @@ const VariantForm = ({
       </Row>
       <Row gutter={16}>
         <Col span={8}>
-          <Form.Item label="Ảnh chính" required validateStatus={variant.errors?.mainImage ? "error" : ""} help={variant.errors?.mainImage}>
+          <Form.Item
+            label="Ảnh chính"
+            required
+            validateStatus={variant.errors?.mainImage ? "error" : ""}
+            help={variant.errors?.mainImage}
+          >
             <Upload
               listType="picture"
               maxCount={1}
@@ -232,7 +280,12 @@ const VariantForm = ({
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item label="Ảnh hover" required validateStatus={variant.errors?.hoverImage ? "error" : ""} help={variant.errors?.hoverImage}>
+          <Form.Item
+            label="Ảnh hover"
+            required
+            validateStatus={variant.errors?.hoverImage ? "error" : ""}
+            help={variant.errors?.hoverImage}
+          >
             <Upload
               listType="picture"
               maxCount={1}
@@ -245,7 +298,12 @@ const VariantForm = ({
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item label="Ảnh sản phẩm" required validateStatus={variant.errors?.productImages ? "error" : ""} help={variant.errors?.productImages}>
+          <Form.Item
+            label="Ảnh sản phẩm"
+            required
+            validateStatus={variant.errors?.productImages ? "error" : ""}
+            help={variant.errors?.productImages}
+          >
             <Upload
               listType="picture"
               multiple
@@ -258,20 +316,70 @@ const VariantForm = ({
           </Form.Item>
         </Col>
       </Row>
-      <Card type="inner" title="Kích thước" style={{ marginTop: 16 }}>
+      <Card type="inner" title="Kích thước và Giá" style={{ marginTop: 16 }}>
+        {/* Chọn chế độ giá */}
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={12}>
+            <Form.Item label="Chế độ giá">
+              <Select
+                value={priceMode}
+                onChange={handlePriceModeChange}
+                style={{ width: "100%" }}
+              >
+                <Select.Option value="single">
+                  Giá chung cho tất cả size
+                </Select.Option>
+                <Select.Option value="multiple">
+                  Giá riêng cho từng size
+                </Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+          {priceMode === "single" && (
+            <Col span={12}>
+              <Form.Item
+                label="Giá chung (VNĐ)"
+                required
+                validateStatus={variant.errors?.commonPrice ? "error" : ""}
+                help={variant.errors?.commonPrice}
+              >
+                <InputNumber
+                  min={0}
+                  style={{ width: "100%" }}
+                  value={commonPrice}
+                  onChange={(value) => handleCommonPriceChange(value || 0)}
+                  placeholder="Nhập giá cho tất cả size"
+                  formatter={(value) =>
+                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                  parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ""))}
+                />
+              </Form.Item>
+            </Col>
+          )}
+        </Row>
+
         <Row gutter={[16, 8]} style={{ fontWeight: 500, padding: "8px 0" }}>
           <Col span={6}>Size</Col>
-          <Col span={18}>Số lượng</Col>
+          <Col span={priceMode === "single" ? 18 : 9}>Số lượng</Col>
+          {priceMode === "multiple" && <Col span={9}>Giá (VNĐ)</Col>}
         </Row>
         {["S", "M", "L", "XL", "XXL"].map((size, sizeIdx) => (
-          <Row gutter={16} key={size} align="middle" style={{ marginBottom: 8 }}>
+          <Row
+            gutter={16}
+            key={size}
+            align="middle"
+            style={{ marginBottom: 8 }}
+          >
             <Col span={6}>
               <Input value={size} disabled />
             </Col>
-            <Col span={18}>
+            <Col span={priceMode === "single" ? 18 : 9}>
               <Form.Item
                 required
-                validateStatus={variant.errors?.[`stock_${size}`] ? "error" : ""}
+                validateStatus={
+                  variant.errors?.[`stock_${size}`] ? "error" : ""
+                }
                 help={variant.errors?.[`stock_${size}`]}
                 style={{ marginBottom: 0 }}
               >
@@ -279,11 +387,37 @@ const VariantForm = ({
                   min={0}
                   style={{ width: "100%" }}
                   value={variant.sizes[sizeIdx]?.stock}
-                  onChange={(v) => handleSizeChange(sizeIdx, v || 0)}
+                  onChange={(v) => handleSizeChange(sizeIdx, "stock", v || 0)}
                   placeholder={`Số lượng size ${size}`}
                 />
               </Form.Item>
             </Col>
+            {priceMode === "multiple" && (
+              <Col span={9}>
+                <Form.Item
+                  required
+                  validateStatus={
+                    variant.errors?.[`price_${size}`] ? "error" : ""
+                  }
+                  help={variant.errors?.[`price_${size}`]}
+                  style={{ marginBottom: 0 }}
+                >
+                  <InputNumber
+                    min={0}
+                    style={{ width: "100%" }}
+                    value={variant.sizes[sizeIdx]?.price}
+                    onChange={(v) => handleSizeChange(sizeIdx, "price", v || 0)}
+                    placeholder={`Giá size ${size}`}
+                    formatter={(value) =>
+                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                    }
+                    parser={(value) =>
+                      Number(value!.replace(/\$\s?|(,*)/g, ""))
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            )}
           </Row>
         ))}
       </Card>
@@ -315,7 +449,9 @@ const VariantForm = ({
                   key={attr.slug}
                   label={attr.name}
                   required
-                  validateStatus={variant.errors?.[`attr_${slug}`] ? "error" : ""}
+                  validateStatus={
+                    variant.errors?.[`attr_${slug}`] ? "error" : ""
+                  }
                   help={variant.errors?.[`attr_${slug}`]}
                 >
                   <Select
@@ -381,15 +517,17 @@ export const ProductCreate: React.FC = () => {
   useEffect(() => {
     setVariants([
       {
-        price: undefined,
         status: true,
         color: { baseColor: undefined, actualColor: "#000000", colorName: "" },
         mainImage: [],
         hoverImage: [],
         productImages: [],
+        priceMode: "single",
+        commonPrice: 0,
         sizes: ["S", "M", "L", "XL", "XXL"].map((size) => ({
           size,
           stock: 0,
+          price: 0,
         })),
         attributes: {},
         selectedAttributes: [],
@@ -409,15 +547,17 @@ export const ProductCreate: React.FC = () => {
     setVariants((prev) => [
       ...prev,
       {
-        price: undefined,
         status: true,
         color: { baseColor: undefined, actualColor: "#000000", colorName: "" },
         mainImage: [],
         hoverImage: [],
         productImages: [],
+        priceMode: "single",
+        commonPrice: 0,
         sizes: ["S", "M", "L", "XL", "XXL"].map((size) => ({
           size,
           stock: 0,
+          price: 0,
         })),
         attributes: {},
         selectedAttributes: [],
@@ -452,10 +592,23 @@ export const ProductCreate: React.FC = () => {
     let isValid = true;
     const newVariants = variants.map((variant) => {
       const errors: any = {};
-      if (!variant.price && variant.price !== 0) {
-        errors.price = "Vui lòng nhập giá";
-        isValid = false;
+
+      // Validate giá theo price mode
+      if (variant.priceMode === "single") {
+        if (!variant.commonPrice && variant.commonPrice !== 0) {
+          errors.commonPrice = "Vui lòng nhập giá chung";
+          isValid = false;
+        }
+      } else {
+        // Validate giá riêng cho từng size
+        variant.sizes.forEach((sz: any) => {
+          if (!sz.price && sz.price !== 0) {
+            errors[`price_${sz.size}`] = `Nhập giá cho size ${sz.size}`;
+            isValid = false;
+          }
+        });
       }
+
       if (!variant.color?.colorName) {
         errors.colorName = "Vui lòng nhập tên màu";
         isValid = false;
@@ -539,7 +692,6 @@ export const ProductCreate: React.FC = () => {
 
         formData.append("productId", productId);
         formData.append("sku", values.sku); // Có thể cần sửa nếu mỗi biến thể có SKU riêng
-        formData.append("price", variant.price);
         formData.append("color.baseColor", variant.color.baseColor);
         formData.append("color.actualColor", variant.color.actualColor);
         formData.append("color.colorName", variant.color.colorName);
@@ -548,6 +700,7 @@ export const ProductCreate: React.FC = () => {
         variant.sizes.forEach((sizeObj: any, i: number) => {
           formData.append(`sizes[${i}][size]`, sizeObj.size);
           formData.append(`sizes[${i}][stock]`, sizeObj.stock.toString());
+          formData.append(`sizes[${i}][price]`, sizeObj.price.toString());
         });
 
         if (variant.mainImage[0]?.originFileObj) {
@@ -578,15 +731,21 @@ export const ProductCreate: React.FC = () => {
       formProps.form?.resetFields();
       setVariants([
         {
-          price: undefined,
           status: true,
-          color: { baseColor: undefined, actualColor: "#000000", colorName: "" },
+          color: {
+            baseColor: undefined,
+            actualColor: "#000000",
+            colorName: "",
+          },
           mainImage: [],
           hoverImage: [],
           productImages: [],
+          priceMode: "single",
+          commonPrice: 0,
           sizes: ["S", "M", "L", "XL", "XXL"].map((size) => ({
             size,
             stock: 0,
+            price: 0,
           })),
           attributes: {},
           selectedAttributes: [],

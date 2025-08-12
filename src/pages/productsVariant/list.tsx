@@ -46,7 +46,7 @@ export const ProductVariantList = () => {
         _page: pagination.current,
         _limit: pagination.pageSize,
         _sort: sorter.field || "createdAt",
-        _order: sorter.order || "desc",     
+        _order: sorter.order || "desc",
         ...(filters._priceMin && filters._priceMin !== ""
           ? { _priceMin: filters._priceMin }
           : {}),
@@ -106,11 +106,21 @@ export const ProductVariantList = () => {
         sizeStock[size] = found ? found.stock : 0;
       });
 
+      // Lấy giá từ size nhỏ nhất
+      let price = 0;
+      if (sizes.length > 0) {
+        const sizeOrder = ["S", "M", "L", "XL", "XXL"];
+        const sortedSizes = sizes.sort((a: any, b: any) => {
+          return sizeOrder.indexOf(a.size) - sizeOrder.indexOf(b.size);
+        });
+        price = sortedSizes[0]?.price || 0;
+      }
+
       return {
         "Sản phẩm": variant?.productId?.name || "",
         SKU: variant?.sku,
         Màu: variant?.color?.colorName || "",
-        Giá: variant?.price,
+        Giá: price,
         "Tồn kho tổng": sizes.reduce(
           (sum: any, s: any) => sum + (s.stock || 0),
           0
@@ -390,11 +400,21 @@ export const ProductVariantList = () => {
             dataIndex="price"
             title="Giá"
             sorter={true}
-            render={(value) => {
+            render={(_, record) => {
+              // Lấy giá từ size nhỏ nhất
+              let price = 0;
+              if (record.sizes && record.sizes.length > 0) {
+                const sizeOrder = ["S", "M", "L", "XL", "XXL"];
+                const sortedSizes = record.sizes.sort((a: any, b: any) => {
+                  return sizeOrder.indexOf(a.size) - sizeOrder.indexOf(b.size);
+                });
+                price = sortedSizes[0]?.price || 0;
+              }
+
               return new Intl.NumberFormat("vi-VN", {
                 style: "currency",
                 currency: "VND",
-              }).format(value);
+              }).format(price);
             }}
           />
           <Table.Column
