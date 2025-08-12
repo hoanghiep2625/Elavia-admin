@@ -8,6 +8,11 @@ import {
 import { useCustom } from "@refinedev/core";
 import { Table, Space, Tag, Form, Input, Button, Select } from "antd";
 import { useState } from "react";
+import {
+  formatVoucherValue,
+  getVoucherTypeColor,
+  getVoucherStatusColor,
+} from "./helpers";
 
 export const VoucherList = () => {
   const [form] = Form.useForm();
@@ -125,17 +130,28 @@ export const VoucherList = () => {
         <Table.Column
           dataIndex="type"
           title="Loại"
-          render={(value) => (value === "fixed" ? "Giảm tiền" : "Giảm %")}
+          render={(value) => (
+            <Tag color={getVoucherTypeColor(value)}>
+              {value === "fixed" ? "Giảm tiền" : "Giảm %"}
+            </Tag>
+          )}
         />
         <Table.Column
           dataIndex="value"
           title="Giá trị"
           sorter={true}
-          render={(value, record) =>
-            record.type === "fixed" ? `${value.toLocaleString()}₫` : `${value}%`
-          }
+          render={(value, record: any) => (
+            <strong>{formatVoucherValue(value, record.type)}</strong>
+          )}
         />
-        <Table.Column dataIndex="quantity" title="Còn lại" sorter={true} />
+        <Table.Column
+          dataIndex="quantity"
+          title="Còn lại"
+          sorter={true}
+          render={(value) => (
+            <Tag color={value > 0 ? "green" : "red"}>{value} lượt</Tag>
+          )}
+        />
         <Table.Column
           dataIndex="expiresAt"
           title="Hết hạn"
@@ -144,13 +160,11 @@ export const VoucherList = () => {
         <Table.Column
           dataIndex="isActive"
           title="Trạng thái"
-          render={(value) =>
-            value ? (
-              <Tag color="green">Hoạt động</Tag>
-            ) : (
-              <Tag color="red">Tắt</Tag>
-            )
-          }
+          render={(value) => (
+            <Tag color={getVoucherStatusColor(value)}>
+              {value ? "Hoạt động" : "Tắt"}
+            </Tag>
+          )}
         />
         <Table.Column
           title="Hành động"
