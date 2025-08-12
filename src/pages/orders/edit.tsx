@@ -1,19 +1,26 @@
-// src/pages/orders/edit.tsx
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
 import { Edit, useForm } from "@refinedev/antd";
-import { useOne } from "@refinedev/core";
 import {
   Form,
   Input,
-  Select,
-  Typography,
   Row,
   Col,
   Card,
-  Tag,
+  Select,
+  Typography,
   List,
+  Tag,
+  Space,
+  Button,
+  Modal,
+  Timeline,
+  message,
+  Popconfirm,
+  Input as AntdInput,
 } from "antd";
+import { useCustom, useUpdate, useOne } from "@refinedev/core";
+import { HistoryOutlined } from "@ant-design/icons";
+import axios from "axios";
 
 const { Title, Text } = Typography;
 
@@ -42,6 +49,8 @@ const getStatusColor = (status: string) => {
       return "geekblue";
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
+    case "Giao dịch bị từ chối do nhà phát hành":
+      return "red";
     case "Khiếu nại":
       return "orange";
     case "Đang xử lý khiếu nại":
@@ -59,9 +68,278 @@ export const OrderEdit = () => {
   const { formProps, saveButtonProps, queryResult } = useForm({
     resource: "orders",
     action: "edit",
+    onMutationSuccess: () => {
+      message.success("Cập nhật đơn hàng thành công");
+      // Refresh lịch sử sau khi cập nhật
+      if (order?.orderId) {
+        refetchHistory();
+      }
+    },
   });
 
   const order = queryResult?.data?.data;
+
+  // Hook để cancel order
+  const { mutate: cancelOrder } = useUpdate();
+
+  // State cho lịch sử trạng thái
+  const [showHistory, setShowHistory] = useState(false);
+  const [statusHistory, setStatusHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Lấy lịch sử trạng thái
+  const { data: historyData, refetch: refetchHistory } = useCustom({
+    url: `/admin/orders/${order?.orderId}/status-history`,
+    method: "get",
+    queryOptions: {
+      enabled: !!order?.orderId && showHistory,
+      onSuccess: () => setLoadingHistory(false),
+      onError: () => setLoadingHistory(false),
+    },
+  });
+
+  useEffect(() => {
+    if (historyData?.data?.data?.statusHistory) {
+      setStatusHistory(historyData.data.data.statusHistory);
+    }
+  }, [historyData]);
+
+  // State cho modal hủy đơn hàng
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+
+  // State cho xử lý hoàn tiền
+  const [refundModalVisible, setRefundModalVisible] = useState(false);
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [checkStatusLoading, setCheckStatusLoading] = useState(false);
+  const [refundForm] = Form.useForm();
+
+  // Hàm xử lý hoàn tiền tự động
+  const handleAutoRefund = async (orderId: string) => {
+    try {
+      setRefundLoading(true);
+      const response = await axios.patch(
+        `http://localhost:8080/api/admin/refunds/${orderId}`,
+        {
+          action: "auto_refund",
+          adminNote: "Hoàn tiền tự động qua API",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        message.success("Hoàn tiền tự động thành công!");
+        queryResult?.refetch(); // Refresh order data
+      } else {
+        message.error(`Hoàn tiền thất bại: ${response.data.message}`);
+      }
+    } catch (error: any) {
+      console.error("Auto refund error:", error);
+      message.error(
+        error.response?.data?.message || "Lỗi khi hoàn tiền tự động"
+      );
+    } finally {
+      setRefundLoading(false);
+    }
+  };
+
+  // Hàm kiểm tra trạng thái hoàn tiền
+  const checkRefundStatus = async (orderId: string) => {
+    try {
+      setCheckStatusLoading(true);
+      const response = await axios.get(
+        `http://localhost:8080/api/admin/refunds/${orderId}/status`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        message.success("Đã cập nhật trạng thái hoàn tiền!");
+        queryResult?.refetch(); // Refresh order data
+      } else {
+        message.warning("Không có cập nhật trạng thái mới");
+      }
+    } catch (error: any) {
+      console.error("Check refund status error:", error);
+      message.error("Lỗi khi kiểm tra trạng thái hoàn tiền");
+    } finally {
+      setCheckStatusLoading(false);
+    }
+  };
+
+  // Hàm xử lý hoàn tiền thủ công
+  const handleManualRefund = async (values: any) => {
+    try {
+      setRefundLoading(true);
+      const response = await axios.patch(
+        `http://localhost:8080/api/admin/refunds/${order?.orderId}`,
+        {
+          action: values.action,
+          adminNote: values.adminNote,
+          refundMethod: values.refundMethod,
+          refundTransactionId: values.refundTransactionId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        message.success("Xử lý hoàn tiền thành công!");
+        setRefundModalVisible(false);
+        refundForm.resetFields();
+        queryResult?.refetch(); // Refresh order data
+      } else {
+        message.error(`Xử lý hoàn tiền thất bại: ${response.data.message}`);
+      }
+    } catch (error: any) {
+      console.error("Manual refund error:", error);
+      message.error("Lỗi khi xử lý hoàn tiền");
+    } finally {
+      setRefundLoading(false);
+    }
+  };
+
+  // Hàm xử lý hủy đơn hàng
+  const handleCancelOrder = () => {
+    if (!order?._id || !cancelReason.trim()) {
+      message.error("Vui lòng nhập lý do hủy đơn hàng");
+      return;
+    }
+
+    cancelOrder(
+      {
+        resource: "orders",
+        id: order._id,
+        values: {
+          paymentStatus: "Người bán huỷ",
+          shippingStatus: "Người bán huỷ",
+          note: "Đơn hàng được hủy bởi admin",
+          reason: cancelReason,
+        },
+      },
+      {
+        onSuccess: (data: any) => {
+          message.success("Hủy đơn hàng thành công");
+
+          // Hiển thị thông tin hoàn tiền nếu có
+          if (data?.refundInfo?.requiresRefund) {
+            Modal.info({
+              title: "Thông tin hoàn tiền",
+              content: (
+                <div>
+                  <p>
+                    <strong>Số tiền:</strong>{" "}
+                    {order?.finalAmount?.toLocaleString("vi-VN")}đ
+                  </p>
+                  <p>
+                    <strong>Phương thức thanh toán:</strong>{" "}
+                    {order?.paymentMethod}
+                  </p>
+                  <p>
+                    <strong>Trạng thái:</strong> {data.refundInfo.message}
+                  </p>
+                  {data.refundInfo.instructions && (
+                    <p>
+                      <strong>Hướng dẫn:</strong> {data.refundInfo.instructions}
+                    </p>
+                  )}
+                </div>
+              ),
+              width: 500,
+            });
+          }
+
+          setShowCancelModal(false);
+          setCancelReason("");
+          // Refresh data
+          queryResult?.refetch();
+          if (order?.orderId) {
+            refetchHistory();
+          }
+        },
+        onError: (error: any) => {
+          message.error(`Lỗi khi hủy đơn hàng: ${error.message}`);
+        },
+      }
+    );
+  };
+
+  // Custom save function để gửi note và reason
+  const handleSave = () => {
+    formProps.form?.validateFields().then((values: any) => {
+      const updateData = {
+        ...values,
+        // Gửi note và reason nếu có
+        note: values.note || "",
+        reason: values.reason || "",
+      };
+
+      formProps.onFinish?.(updateData);
+    });
+  };
+
+  // Logic trạng thái được phép chuyển đổi cho admin (không bao gồm khiếu nại, đã nhận hàng và các trạng thái hủy)
+  const allowedShippingStatusTransitions: Record<string, string[]> = {
+    "Chờ xác nhận": ["Đã xác nhận"], // Loại bỏ option hủy - chỉ hủy qua nút riêng
+    "Đã xác nhận": ["Đang giao hàng"], // Loại bỏ option hủy - chỉ hủy qua nút riêng
+    "Đang giao hàng": ["Giao hàng thành công", "Giao hàng thất bại"], // Loại bỏ option hủy - chỉ hủy qua nút riêng
+    "Giao hàng thành công": [], // Admin không thể chuyển sang "Đã nhận hàng" - chỉ user/cronjob
+    "Đã nhận hàng": [], // Trạng thái cuối
+    "Giao hàng thất bại": [], // Không cho phép hủy từ trạng thái này - chỉ hủy qua nút riêng
+    "Khiếu nại": ["Đang xử lý khiếu nại"], // Chỉ khi user đã khiếu nại
+    "Đang xử lý khiếu nại": [
+      "Khiếu nại được giải quyết",
+      "Khiếu nại bị từ chối",
+    ], // Admin xử lý khiếu nại
+    "Khiếu nại được giải quyết": [],
+    "Khiếu nại bị từ chối": [],
+    "Người mua huỷ": [], // Trạng thái cuối - đã hủy
+    "Người bán huỷ": [], // Trạng thái cuối - đã hủy
+  };
+
+  // Helper function để check xem order có thể cancel hay không (cho admin)
+  const canCancelOrder = (order: any) => {
+    // Không thể hủy nếu đã bị hủy hoặc đã hoàn thành
+    if (
+      order?.paymentStatus === "Người bán huỷ" ||
+      order?.paymentStatus === "Người mua huỷ" ||
+      order?.shippingStatus === "Người bán huỷ" ||
+      order?.shippingStatus === "Người mua huỷ" ||
+      order?.shippingStatus === "Đã nhận hàng" ||
+      order?.shippingStatus === "Giao hàng thành công" ||
+      order?.shippingStatus === "Khiếu nại" ||
+      order?.shippingStatus === "Đang xử lý khiếu nại" ||
+      order?.shippingStatus === "Khiếu nại được giải quyết" ||
+      order?.shippingStatus === "Khiếu nại bị từ chối"
+    ) {
+      return false;
+    }
+
+    // Admin chỉ có thể hủy trước khi giao hàng thành công
+    const allowedShippingStatuses = [
+      "Chờ xác nhận",
+      "Đã xác nhận",
+      "Đang giao hàng",
+      "Giao hàng thất bại",
+    ];
+
+    return allowedShippingStatuses.includes(order?.shippingStatus);
+  };
+
+  // Helper function để check xem shipping status có thể thay đổi hay không
+  const canChangeShippingStatus = (currentStatus: string) => {
+    return (allowedShippingStatusTransitions[currentStatus] || []).length > 0;
+  };
 
   // Call API user
   const userId = order?.user?._id;
@@ -175,19 +453,14 @@ export const OrderEdit = () => {
     });
   };
 
-  // Map receiver sang user nếu user không có name/phone/address
-  const initialValues = {
-    ...order,
-    user: {
-      ...order?.user,
-      name: order?.user?.name || order?.receiver?.name || "",
-      phone: order?.user?.phone || order?.receiver?.phone || "",
-      address: order?.user?.address || order?.receiver?.address || "",
-    },
-  };
-
   return (
-    <Edit saveButtonProps={saveButtonProps} title="Chỉnh sửa đơn hàng">
+    <Edit
+      saveButtonProps={{
+        ...saveButtonProps,
+        onClick: handleSave,
+      }}
+      title="Chỉnh sửa đơn hàng"
+    >
       <Form {...formProps} layout="vertical">
         <Row gutter={24}>
           {/* Thông tin người đặt */}
@@ -196,19 +469,17 @@ export const OrderEdit = () => {
               <div style={{ marginLeft: 16 }}>
                 <div style={{ marginBottom: 8 }}>
                   <strong>Họ tên:</strong>
-                  <div>
-                    {[userInfo?.first_name, userInfo?.name]
-                      .filter(Boolean)
-                      .join(" ") || "--"}
-                  </div>
+                  <div>{userInfo?.name || order?.user?.name || "Chưa có"}</div>
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <strong>Email:</strong>
-                  <div>{userInfo?.email || order?.user?.email || "--"}</div>
+                  <div>{order?.user?.email || "Chưa có"}</div>
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <strong>Số điện thoại:</strong>
-                  <div>{userInfo?.phone || order?.user?.phone || "--"}</div>
+                  <div>
+                    {userInfo?.phone || order?.user?.phone || "Chưa có"}
+                  </div>
                 </div>
               </div>
             </Card>
@@ -446,13 +717,15 @@ export const OrderEdit = () => {
                               color="default"
                               style={{
                                 background:
-                                  productColor?.actualColor || "#f0f0f0",
+                                  typeof productColor === "string"
+                                    ? productColor
+                                    : productColor?.baseColor || "#f0f0f0",
                                 color: "#000",
-                                border: "none",
-                                minWidth: 60,
                               }}
                             >
-                              {productColor?.colorName || "--"}
+                              {typeof productColor === "string"
+                                ? productColor
+                                : productColor?.colorName || "Không có"}
                             </Tag>
                           </span>
                         </div>
@@ -469,78 +742,486 @@ export const OrderEdit = () => {
         {/* Trạng thái đơn hàng */}
         <Row gutter={24} style={{ marginTop: 24 }}>
           <Col span={12}>
-            <Form.Item
-              label="Trạng thái thanh toán"
-              name="paymentStatus"
-              rules={[
-                {
-                  required: true,
-                  message: "Vui lòng chọn trạng thái thanh toán",
-                },
-              ]}
-            >
-              <Select placeholder="Chọn trạng thái thanh toán">
-                {[
-                  "Chờ thanh toán",
-                  "Đã thanh toán",
-                  "Thanh toán khi nhận hàng",
-                  "Huỷ do quá thời gian thanh toán",
-                  "Người mua huỷ",
-                  "Người bán huỷ",
-                ].map((status) => (
-                  <Select.Option key={status} value={status}>
+            <Card title="Trạng thái thanh toán">
+              <div style={{ marginBottom: 16 }}>
+                <Text>Trạng thái hiện tại: </Text>
+                <Tag color={getStatusColor(order?.paymentStatus)}>
+                  {order?.paymentStatus || "Chưa xác định"}
+                </Tag>
+              </div>
+
+              {/* Hiển thị thông tin hoàn tiền nếu có */}
+              {order?.paymentDetails?.refundRequested && (
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    backgroundColor: "#fff7e6",
+                    border: "1px solid #ffd591",
+                    borderRadius: 6,
+                  }}
+                >
+                  <Text strong style={{ color: "#d46b08" }}>
+                    🔄 Thông tin hoàn tiền:
+                  </Text>
+                  <div style={{ marginTop: 8 }}>
+                    <Text>Trạng thái: </Text>
                     <Tag
-                      color={getStatusColor(status)}
-                      style={{ marginRight: 8 }}
+                      color={
+                        order.paymentDetails.refundStatus === "Chờ xử lý"
+                          ? "orange"
+                          : order.paymentDetails.refundStatus === "Đã duyệt"
+                          ? "blue"
+                          : order.paymentDetails.refundStatus ===
+                            "Đã hoàn thành"
+                          ? "green"
+                          : "red"
+                      }
                     >
-                      ●
+                      {order.paymentDetails.refundStatus || "Chờ xử lý"}
                     </Tag>
-                    {status}
-                  </Select.Option>
-                ))}
-              </Select>
+                  </div>
+                  <div style={{ marginTop: 4 }}>
+                    <Text type="secondary">
+                      Số tiền: {order?.finalAmount?.toLocaleString("vi-VN")}đ
+                    </Text>
+                  </div>
+                  {order.paymentDetails.refundRequestedAt && (
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="secondary">
+                        Yêu cầu lúc:{" "}
+                        {new Date(
+                          order.paymentDetails.refundRequestedAt
+                        ).toLocaleString("vi-VN")}
+                      </Text>
+                    </div>
+                  )}
+
+                  {/* Nút xử lý hoàn tiền cho admin */}
+                  {order.paymentDetails.refundStatus === "Chờ xử lý" && (
+                    <div style={{ marginTop: 12 }}>
+                      <Space>
+                        {/* Nút hoàn tiền tự động cho MoMo/ZaloPay */}
+                        {(order.paymentMethod === "MoMo" ||
+                          order.paymentMethod === "zalopay") && (
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() => handleAutoRefund(order.orderId)}
+                            loading={refundLoading}
+                          >
+                            🤖 Hoàn tiền tự động
+                          </Button>
+                        )}
+                        <Button
+                          size="small"
+                          onClick={() => setRefundModalVisible(true)}
+                        >
+                          ⚙️ Xử lý thủ công
+                        </Button>
+                        <Button
+                          size="small"
+                          type="link"
+                          onClick={() => checkRefundStatus(order.orderId)}
+                          loading={checkStatusLoading}
+                        >
+                          🔍 Kiểm tra trạng thái
+                        </Button>
+                      </Space>
+                    </div>
+                  )}
+
+                  {/* Hiển thị thông tin hoàn tiền đã hoàn thành */}
+                  {order.paymentDetails.refundStatus === "Đã hoàn thành" && (
+                    <div style={{ marginTop: 8 }}>
+                      {order.paymentDetails.refundMethod && (
+                        <div style={{ marginTop: 4 }}>
+                          <Text type="secondary">
+                            Phương thức: {order.paymentDetails.refundMethod}
+                          </Text>
+                        </div>
+                      )}
+                      {order.paymentDetails.refundId && (
+                        <div style={{ marginTop: 4 }}>
+                          <Text type="secondary">
+                            Mã hoàn tiền: {order.paymentDetails.refundId}
+                          </Text>
+                        </div>
+                      )}
+                      {order.paymentDetails.refundCompletedAt && (
+                        <div style={{ marginTop: 4 }}>
+                          <Text type="secondary">
+                            Hoàn thành lúc:{" "}
+                            {new Date(
+                              order.paymentDetails.refundCompletedAt
+                            ).toLocaleString("vi-VN")}
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Text type="secondary">
+                Trạng thái thanh toán được tự động quản lý bởi hệ thống và không
+                thể chỉnh sửa trực tiếp.
+              </Text>
+            </Card>
+          </Col>
+          <Col span={12}>
+            <Card title="Trạng thái giao hàng">
+              {!canChangeShippingStatus(order?.shippingStatus) ? (
+                <div>
+                  <div style={{ marginBottom: 16 }}>
+                    <Text>Trạng thái hiện tại: </Text>
+                    <Tag color={getStatusColor(order?.shippingStatus)}>
+                      {order?.shippingStatus || "Chưa xác định"}
+                    </Tag>
+                  </div>
+                  <Text type="secondary">
+                    Trạng thái này không thể thay đổi nữa.
+                  </Text>
+                </div>
+              ) : (
+                <Form.Item
+                  label="Trạng thái giao hàng"
+                  name="shippingStatus"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Vui lòng chọn trạng thái giao hàng",
+                    },
+                  ]}
+                >
+                  <Select
+                    placeholder="Chọn trạng thái giao hàng"
+                    defaultValue={order?.shippingStatus}
+                  >
+                    {/* Trạng thái hiện tại */}
+                    <Select.Option value={order?.shippingStatus}>
+                      <Tag
+                        color={getStatusColor(order?.shippingStatus)}
+                        style={{ marginRight: 8 }}
+                      >
+                        ●
+                      </Tag>
+                      {order?.shippingStatus} (hiện tại)
+                    </Select.Option>
+
+                    {/* Các trạng thái được phép chuyển đổi */}
+                    {(
+                      allowedShippingStatusTransitions[order?.shippingStatus] ||
+                      []
+                    ).map((status) => (
+                      <Select.Option key={status} value={status}>
+                        <Tag
+                          color={getStatusColor(status)}
+                          style={{ marginRight: 8 }}
+                        >
+                          ●
+                        </Tag>
+                        {status}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Note và Reason cho admin */}
+        <Row gutter={24} style={{ marginTop: 16 }}>
+          <Col span={12}>
+            <Form.Item label="Ghi chú" name="note">
+              <AntdInput.TextArea
+                rows={3}
+                placeholder="Ghi chú thay đổi (tùy chọn)"
+              />
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item
-              label="Trạng thái giao hàng"
-              name="shippingStatus"
-              rules={[
-                {
-                  required: true,
-                  message: "Vui lòng chọn trạng thái giao hàng",
-                },
-              ]}
-            >
-              <Select placeholder="Chọn trạng thái giao hàng">
-                {[
-                  "Chờ xác nhận",
-                  "Đã xác nhận",
-                  "Đang giao hàng",
-                  "Giao hàng thành công",
-                  "Giao hàng thất bại",
-                  "Đã nhận hàng",
-                  "Khiếu nại",
-                  "Đang xử lý khiếu nại",
-                  "Khiếu nại được giải quyết",
-                  "Khiếu nại bị từ chối",
-                  "Người mua huỷ",
-                  "Người bán huỷ",
-                ].map((status) => (
-                  <Select.Option key={status} value={status}>
-                    <Tag
-                      color={getStatusColor(status)}
-                      style={{ marginRight: 8 }}
-                    >
-                      ●
-                    </Tag>
-                    {status}
-                  </Select.Option>
-                ))}
-              </Select>
+            <Form.Item label="Lý do" name="reason">
+              <AntdInput.TextArea
+                rows={3}
+                placeholder="Lý do thay đổi (tùy chọn)"
+              />
             </Form.Item>
           </Col>
         </Row>
+
+        <Row style={{ marginTop: 24 }}>
+          <Col span={24}>
+            <Space>
+              <Button
+                type="default"
+                icon={<HistoryOutlined />}
+                onClick={() => {
+                  setShowHistory(true);
+                  setLoadingHistory(true);
+                  if (order?.orderId) {
+                    refetchHistory();
+                  }
+                }}
+              >
+                Xem lịch sử trạng thái
+              </Button>
+
+              {canCancelOrder(order) && (
+                <Button danger onClick={() => setShowCancelModal(true)}>
+                  Hủy đơn hàng
+                </Button>
+              )}
+            </Space>
+          </Col>
+        </Row>
+
+        {/* Modal hiển thị lịch sử trạng thái */}
+        <Modal
+          title={
+            <Space>
+              <HistoryOutlined />
+              Lịch sử trạng thái đơn hàng: {order?.orderId}
+            </Space>
+          }
+          open={showHistory}
+          onCancel={() => setShowHistory(false)}
+          footer={[
+            <Button key="close" onClick={() => setShowHistory(false)}>
+              Đóng
+            </Button>,
+          ]}
+          width={800}
+          loading={loadingHistory}
+        >
+          {loadingHistory ? (
+            <div style={{ textAlign: "center", padding: 40 }}>
+              <Text type="secondary">Đang tải lịch sử...</Text>
+            </div>
+          ) : statusHistory.length > 0 ? (
+            <Timeline
+              mode="left"
+              items={statusHistory.map((history: any, index: number) => ({
+                color: getStatusColor(history.to),
+                label: (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {new Date(history.updatedAt).toLocaleString("vi-VN")}
+                  </Text>
+                ),
+                children: (
+                  <Card size="small" style={{ marginBottom: 8 }}>
+                    <div>
+                      <Text strong>
+                        {history.type === "payment"
+                          ? "Thanh toán"
+                          : "Giao hàng"}
+                        :
+                      </Text>
+                      <Tag
+                        color={getStatusColor(history.from)}
+                        style={{ margin: "0 8px" }}
+                      >
+                        {history.from}
+                      </Tag>
+                      →
+                      <Tag
+                        color={getStatusColor(history.to)}
+                        style={{ margin: "0 8px" }}
+                      >
+                        {history.to}
+                      </Tag>
+                    </div>
+                    {history.note && (
+                      <div style={{ marginTop: 4 }}>
+                        <Text type="secondary">Ghi chú: {history.note}</Text>
+                      </div>
+                    )}
+                    {history.reason && (
+                      <div style={{ marginTop: 4 }}>
+                        <Text type="secondary">Lý do: {history.reason}</Text>
+                      </div>
+                    )}
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {history.isAutomatic ? "🤖 Tự động" : "👤 Thủ công"}
+                        {history.updatedBy &&
+                          ` • Bởi: ${history.updatedBy.email || "Hệ thống"}`}
+                      </Text>
+                    </div>
+                  </Card>
+                ),
+              }))}
+            />
+          ) : (
+            <div style={{ textAlign: "center", padding: 40 }}>
+              <Text type="secondary">Chưa có lịch sử thay đổi trạng thái</Text>
+            </div>
+          )}
+        </Modal>
+
+        {/* Modal hủy đơn hàng */}
+        <Modal
+          title="Hủy đơn hàng"
+          open={showCancelModal}
+          onCancel={() => {
+            setShowCancelModal(false);
+            setCancelReason("");
+          }}
+          footer={[
+            <Button
+              key="cancel"
+              onClick={() => {
+                setShowCancelModal(false);
+                setCancelReason("");
+              }}
+            >
+              Hủy
+            </Button>,
+            <Button
+              key="confirm"
+              type="primary"
+              danger
+              onClick={handleCancelOrder}
+              disabled={!cancelReason.trim()}
+            >
+              Xác nhận hủy đơn hàng
+            </Button>,
+          ]}
+          width={500}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <Text type="secondary">
+              Bạn có chắc chắn muốn hủy đơn hàng{" "}
+              <Text strong>{order?.orderId}</Text> không?
+            </Text>
+          </div>
+          <div>
+            <Text strong style={{ color: "#f5222d" }}>
+              Lý do hủy đơn hàng:
+            </Text>
+            <AntdInput.TextArea
+              rows={4}
+              placeholder="Nhập lý do hủy đơn hàng (bắt buộc)"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              style={{ marginTop: 8 }}
+            />
+          </div>
+        </Modal>
+
+        {/* Modal xử lý hoàn tiền thủ công */}
+        <Modal
+          title="Xử lý hoàn tiền thủ công"
+          open={refundModalVisible}
+          onCancel={() => {
+            setRefundModalVisible(false);
+            refundForm.resetFields();
+          }}
+          footer={null}
+          width={600}
+        >
+          <Form
+            form={refundForm}
+            layout="vertical"
+            onFinish={handleManualRefund}
+          >
+            <Form.Item
+              label="Hành động"
+              name="action"
+              rules={[{ required: true, message: "Vui lòng chọn hành động" }]}
+            >
+              <Select placeholder="Chọn hành động">
+                <Select.Option value="approve">Duyệt hoàn tiền</Select.Option>
+                <Select.Option value="reject">Từ chối hoàn tiền</Select.Option>
+                <Select.Option value="completed">
+                  Đánh dấu đã hoàn thành
+                </Select.Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              shouldUpdate={(prevValues, currentValues) =>
+                prevValues.action !== currentValues.action
+              }
+            >
+              {({ getFieldValue }) => {
+                const action = getFieldValue("action");
+                return action === "completed" ? (
+                  <>
+                    <Form.Item
+                      label="Phương thức hoàn tiền"
+                      name="refundMethod"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Vui lòng nhập phương thức hoàn tiền",
+                        },
+                      ]}
+                    >
+                      <Select placeholder="Chọn phương thức hoàn tiền">
+                        <Select.Option value="bank_transfer">
+                          Chuyển khoản ngân hàng
+                        </Select.Option>
+                        <Select.Option value="momo_manual">
+                          MoMo thủ công
+                        </Select.Option>
+                        <Select.Option value="zalopay_manual">
+                          ZaloPay thủ công
+                        </Select.Option>
+                        <Select.Option value="cash">Tiền mặt</Select.Option>
+                        <Select.Option value="other">Khác</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      label="Mã giao dịch hoàn tiền"
+                      name="refundTransactionId"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Vui lòng nhập mã giao dịch hoàn tiền",
+                        },
+                      ]}
+                    >
+                      <Input placeholder="Nhập mã giao dịch hoàn tiền" />
+                    </Form.Item>
+                  </>
+                ) : null;
+              }}
+            </Form.Item>
+
+            <Form.Item
+              label="Ghi chú admin"
+              name="adminNote"
+              rules={[{ required: true, message: "Vui lòng nhập ghi chú" }]}
+            >
+              <AntdInput.TextArea
+                rows={4}
+                placeholder="Nhập ghi chú về việc xử lý hoàn tiền"
+              />
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button
+                  onClick={() => {
+                    setRefundModalVisible(false);
+                    refundForm.resetFields();
+                  }}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={refundLoading}
+                >
+                  Xác nhận xử lý
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
       </Form>
     </Edit>
   );

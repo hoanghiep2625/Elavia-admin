@@ -1,5 +1,5 @@
 import { Show } from "@refinedev/antd";
-import { useShow } from "@refinedev/core";
+import { useShow, useCustom } from "@refinedev/core";
 import { useParams } from "react-router-dom";
 import {
   Typography,
@@ -10,9 +10,15 @@ import {
   Image,
   Row,
   Col,
+  Button,
+  Modal,
+  Timeline,
+  Space,
+  message,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { HistoryOutlined } from "@ant-design/icons";
 
 const { Text, Title } = Typography;
 
@@ -41,6 +47,8 @@ const getStatusColor = (status: any) => {
       return "geekblue";
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
+    case "Giao dịch bị từ chối do nhà phát hành":
+      return "red";
     case "Khiếu nại":
       return "orange";
     case "Đang xử lý khiếu nại":
@@ -59,6 +67,38 @@ export const OrderShow = () => {
   const { queryResult } = useShow({ resource: "orders", id });
   const { data, isLoading } = queryResult;
   const record = data?.data;
+
+  // State cho lịch sử trạng thái
+  const [showHistory, setShowHistory] = useState(false);
+  const [statusHistory, setStatusHistory] = useState([]);
+
+  // Lấy lịch sử trạng thái
+  const { refetch: refetchHistory } = useCustom({
+    url: `/admin/orders/${record?.orderId}/status-history`,
+    method: "get",
+    queryOptions: {
+      enabled: false, // Chỉ gọi khi cần
+      onSuccess: (data) => {
+        if (data?.data?.data?.statusHistory) {
+          setStatusHistory(data.data.data.statusHistory);
+        }
+      },
+    },
+  });
+
+  // Hàm mở modal lịch sử
+  const showOrderHistory = async () => {
+    if (!record?.orderId) {
+      message.error("Không tìm thấy mã đơn hàng");
+      return;
+    }
+    setShowHistory(true);
+    try {
+      await refetchHistory();
+    } catch (error) {
+      message.error("Không thể tải lịch sử trạng thái");
+    }
+  };
 
   const { queryResult: userQuery } = useShow({
     resource: "/users",
@@ -305,8 +345,94 @@ export const OrderShow = () => {
           <Card title="Phương thức vận chuyển" style={{ marginTop: 24 }}>
             <Text>Chuyển phát nhanh</Text>
           </Card>
+
+          {/* Lịch sử trạng thái */}
+          <Card title="Lịch sử trạng thái" style={{ marginTop: 24 }}>
+            <Button
+              type="primary"
+              icon={<HistoryOutlined />}
+              onClick={showOrderHistory}
+            >
+              Xem lịch sử trạng thái đơn hàng
+            </Button>
+          </Card>
         </Col>
       </Row>
+
+      {/* Modal hiển thị lịch sử trạng thái */}
+      <Modal
+        title={
+          <Space>
+            <HistoryOutlined />
+            Lịch sử trạng thái đơn hàng: {record?.orderId}
+          </Space>
+        }
+        open={showHistory}
+        onCancel={() => setShowHistory(false)}
+        footer={[
+          <Button key="close" onClick={() => setShowHistory(false)}>
+            Đóng
+          </Button>,
+        ]}
+        width={800}
+      >
+        {statusHistory.length > 0 ? (
+          <Timeline
+            mode="left"
+            items={statusHistory.map((history: any, index: number) => ({
+              color: getStatusColor(history.to),
+              label: (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {new Date(history.updatedAt).toLocaleString("vi-VN")}
+                </Text>
+              ),
+              children: (
+                <Card size="small" style={{ marginBottom: 8 }}>
+                  <div>
+                    <Text strong>
+                      {history.type === "payment" ? "Thanh toán" : "Giao hàng"}:
+                    </Text>
+                    <Tag
+                      color={getStatusColor(history.from)}
+                      style={{ margin: "0 8px" }}
+                    >
+                      {history.from}
+                    </Tag>
+                    →
+                    <Tag
+                      color={getStatusColor(history.to)}
+                      style={{ margin: "0 8px" }}
+                    >
+                      {history.to}
+                    </Tag>
+                  </div>
+                  {history.note && (
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="secondary">Ghi chú: {history.note}</Text>
+                    </div>
+                  )}
+                  {history.reason && (
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="secondary">Lý do: {history.reason}</Text>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {history.isAutomatic ? "🤖 Tự động" : "👤 Thủ công"}
+                      {history.updatedBy &&
+                        ` • Bởi: ${history.updatedBy.email || "Hệ thống"}`}
+                    </Text>
+                  </div>
+                </Card>
+              ),
+            }))}
+          />
+        ) : (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Text type="secondary">Chưa có lịch sử thay đổi trạng thái</Text>
+          </div>
+        )}
+      </Modal>
     </Show>
   );
 };

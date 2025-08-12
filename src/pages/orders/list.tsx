@@ -9,8 +9,16 @@ import {
   Tooltip,
   Descriptions,
   message,
+  Modal,
+  Timeline,
+  Card,
+  Typography,
+  Space,
 } from "antd";
 import { useCustom, useUpdate, useInvalidate } from "@refinedev/core";
+import { HistoryOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -37,6 +45,8 @@ const getStatusColor = (status: string) => {
       return "geekblue";
     case "Huỷ do quá thời gian thanh toán":
       return "magenta";
+    case "Giao dịch bị từ chối do nhà phát hành":
+      return "red";
     case "Khiếu nại":
       return "orange";
     case "Đang xử lý khiếu nại":
@@ -84,39 +94,45 @@ export const OrderList = () => {
   const { mutate: updateOrder } = useUpdate();
   const invalidate = useInvalidate();
 
-  // Logic xác định trạng thái có thể thay đổi được
-  const allowedPaymentStatusTransitions: Record<string, string[]> = {
-    "Chờ thanh toán": [
-      "Đã thanh toán",
-      "Huỷ do quá thời gian thanh toán",
-      "Người mua huỷ",
-      "Người bán huỷ",
-    ],
-    "Đã thanh toán": ["Người mua huỷ", "Người bán huỷ"],
-    "Thanh toán khi nhận hàng": [
-      "Đã thanh toán", // Khi giao hàng thành công
-      "Người mua huỷ",
-      "Người bán huỷ",
-    ],
-    "Huỷ do quá thời gian thanh toán": [],
-    "Người mua huỷ": [],
-    "Người bán huỷ": [],
+  // State cho lịch sử trạng thái
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState("");
+  const [statusHistory, setStatusHistory] = useState([]);
+
+  // Lấy lịch sử trạng thái
+  const { refetch: refetchHistory } = useCustom({
+    url: `/admin/orders/${selectedOrderId}/status-history`,
+    method: "get",
+    queryOptions: {
+      enabled: false, // Chỉ gọi khi cần
+      onSuccess: (data) => {
+        if (data?.data?.data?.statusHistory) {
+          setStatusHistory(data.data.data.statusHistory);
+        }
+      },
+    },
+  });
+
+  // Hàm mở modal lịch sử
+  const showOrderHistory = async (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setShowHistory(true);
+    try {
+      await refetchHistory();
+    } catch (error) {
+      message.error("Không thể tải lịch sử trạng thái");
+    }
   };
 
+  // Logic xác định trạng thái admin có thể thay đổi (chỉ shipping status, không bao gồm khiếu nại, đã nhận hàng và các trạng thái hủy)
   const allowedShippingStatusTransitions: Record<string, string[]> = {
-    "Chờ xác nhận": ["Đã xác nhận", "Người mua huỷ", "Người bán huỷ"],
-    "Đã xác nhận": ["Đang giao hàng", "Người bán huỷ", "Người mua huỷ"],
-    "Đang giao hàng": [
-      "Giao hàng thành công",
-      "Giao hàng thất bại",
-      "Khiếu nại",
-      "Người bán huỷ",
-      "Người mua huỷ",
-    ],
-    "Giao hàng thành công": ["Đã nhận hàng", "Khiếu nại"],
+    "Chờ xác nhận": ["Đã xác nhận"], // Loại bỏ option hủy - muốn hủy phải vào trang edit
+    "Đã xác nhận": ["Đang giao hàng"], // Loại bỏ option hủy - muốn hủy phải vào trang edit
+    "Đang giao hàng": ["Giao hàng thành công", "Giao hàng thất bại"], // Loại bỏ option hủy - muốn hủy phải vào trang edit
+    "Giao hàng thành công": [], // Admin không thể chuyển sang "Đã nhận hàng"
     "Đã nhận hàng": [],
-    "Giao hàng thất bại": ["Người bán huỷ", "Người mua huỷ", "Khiếu nại"],
-    "Khiếu nại": ["Đang xử lý khiếu nại"],
+    "Giao hàng thất bại": [], // Không cho phép hủy từ trạng thái này - muốn hủy phải vào trang edit
+    "Khiếu nại": ["Đang xử lý khiếu nại"], // Chỉ khi user đã khiếu nại
     "Đang xử lý khiếu nại": [
       "Khiếu nại được giải quyết",
       "Khiếu nại bị từ chối",
@@ -127,17 +143,17 @@ export const OrderList = () => {
     "Người bán huỷ": [],
   };
 
-  // Hàm xử lý thay đổi trạng thái
+  // Hàm xử lý thay đổi trạng thái (chỉ shipping status)
   const handleStatusChange = (
     orderId: string,
-    statusType: "payment" | "shipping",
     newStatus: string,
     currentData: any
   ) => {
-    const updateData =
-      statusType === "payment"
-        ? { paymentStatus: newStatus }
-        : { shippingStatus: newStatus };
+    const updateData = {
+      shippingStatus: newStatus,
+      note: `Admin thay đổi trạng thái từ ${currentData.shippingStatus} sang ${newStatus}`,
+      reason: "Cập nhật trạng thái từ trang danh sách",
+    };
 
     updateOrder(
       {
@@ -147,11 +163,7 @@ export const OrderList = () => {
       },
       {
         onSuccess: () => {
-          message.success(
-            `Cập nhật trạng thái ${
-              statusType === "payment" ? "thanh toán" : "giao hàng"
-            } thành công`
-          );
+          message.success("Cập nhật trạng thái giao hàng thành công");
           // Refresh data
           invalidate({
             resource: "orders",
@@ -284,6 +296,9 @@ export const OrderList = () => {
             </Select.Option>
             <Select.Option value="Huỷ do quá thời gian thanh toán">
               Huỷ do quá thời gian thanh toán
+            </Select.Option>
+            <Select.Option value="Giao dịch bị từ chối do nhà phát hành">
+              Giao dịch bị từ chối do nhà phát hành
             </Select.Option>
           </Select.OptGroup>
           <Select.OptGroup label="Trạng thái giao hàng">
@@ -463,82 +478,17 @@ export const OrderList = () => {
             }
           }}
         />
+        {/* Chỉ hiển thị trạng thái thanh toán, không cho phép sửa */}
         <Table.Column
           title="TT Thanh toán"
-          width={180}
+          width={150}
           dataIndex="paymentStatus"
           sorter={true}
-          render={(status: string, record: any) => {
-            const allowedTransitions =
-              allowedPaymentStatusTransitions[status] || [];
-            const canChange = allowedTransitions.length > 0;
-
-            if (!canChange) {
-              // Không thể thay đổi - chỉ hiển thị Tag
-              return (
-                <Tag color={getStatusColor(status || "default")}>
-                  {status || "Không xác định"}
-                </Tag>
-              );
-            }
-
-            // Có thể thay đổi - hiển thị Select
-            return (
-              <Select
-                value={status}
-                style={{ width: "100%" }}
-                size="small"
-                onChange={(value) =>
-                  handleStatusChange(record._id, "payment", value, record)
-                }
-              >
-                <Select.Option value={status}>
-                  <span
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        backgroundColor: getStatusDotColor(
-                          getStatusColor(status)
-                        ),
-                      }}
-                    ></span>
-                    {status}
-                  </span>
-                </Select.Option>
-                {allowedTransitions.map((nextStatus) => (
-                  <Select.Option key={nextStatus} value={nextStatus}>
-                    <span
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          backgroundColor: getStatusDotColor(
-                            getStatusColor(nextStatus)
-                          ),
-                        }}
-                      ></span>
-                      {nextStatus}
-                    </span>
-                  </Select.Option>
-                ))}
-              </Select>
-            );
-          }}
+          render={(status: string) => (
+            <Tag color={getStatusColor(status || "default")}>
+              {status || "Không xác định"}
+            </Tag>
+          )}
         />
         <Table.Column
           title="TT Giao hàng"
@@ -566,7 +516,7 @@ export const OrderList = () => {
                 style={{ width: "100%" }}
                 size="small"
                 onChange={(value) =>
-                  handleStatusChange(record._id, "shipping", value, record)
+                  handleStatusChange(record._id, value, record)
                 }
               >
                 <Select.Option value={status}>
@@ -619,15 +569,101 @@ export const OrderList = () => {
         />
         <Table.Column
           title="Thao tác"
-          width={100}
+          width={140}
           render={(_, record: any) => (
-            <span style={{ display: "flex", gap: 8 }}>
-              <ShowButton hideText size="small" recordItemId={record._id} />
-              <EditButton hideText size="small" recordItemId={record._id} />
-            </span>
+            <Space size="small">
+              <Tooltip title="Xem chi tiết">
+                <ShowButton hideText size="small" recordItemId={record._id} />
+              </Tooltip>
+              <Tooltip title="Chỉnh sửa">
+                <EditButton hideText size="small" recordItemId={record._id} />
+              </Tooltip>
+              <Tooltip title="Lịch sử trạng thái">
+                <Button
+                  size="small"
+                  icon={<HistoryOutlined />}
+                  onClick={() => showOrderHistory(record.orderId)}
+                />
+              </Tooltip>
+            </Space>
           )}
         />
       </Table>
+
+      {/* Modal hiển thị lịch sử trạng thái */}
+      <Modal
+        title={
+          <Space>
+            <HistoryOutlined />
+            Lịch sử trạng thái đơn hàng: {selectedOrderId}
+          </Space>
+        }
+        open={showHistory}
+        onCancel={() => setShowHistory(false)}
+        footer={[
+          <Button key="close" onClick={() => setShowHistory(false)}>
+            Đóng
+          </Button>,
+        ]}
+        width={800}
+      >
+        {statusHistory.length > 0 ? (
+          <Timeline
+            mode="left"
+            items={statusHistory.map((history: any, index: number) => ({
+              color: getStatusColor(history.to),
+              label: (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {new Date(history.updatedAt).toLocaleString("vi-VN")}
+                </Text>
+              ),
+              children: (
+                <Card size="small" style={{ marginBottom: 8 }}>
+                  <div>
+                    <Text strong>
+                      {history.type === "payment" ? "Thanh toán" : "Giao hàng"}:
+                    </Text>
+                    <Tag
+                      color={getStatusColor(history.from)}
+                      style={{ margin: "0 8px" }}
+                    >
+                      {history.from}
+                    </Tag>
+                    →
+                    <Tag
+                      color={getStatusColor(history.to)}
+                      style={{ margin: "0 8px" }}
+                    >
+                      {history.to}
+                    </Tag>
+                  </div>
+                  {history.note && (
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="secondary">Ghi chú: {history.note}</Text>
+                    </div>
+                  )}
+                  {history.reason && (
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="secondary">Lý do: {history.reason}</Text>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {history.isAutomatic ? "🤖 Tự động" : "👤 Thủ công"}
+                      {history.updatedBy &&
+                        ` • Bởi: ${history.updatedBy.email || "Hệ thống"}`}
+                    </Text>
+                  </div>
+                </Card>
+              ),
+            }))}
+          />
+        ) : (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Text type="secondary">Chưa có lịch sử thay đổi trạng thái</Text>
+          </div>
+        )}
+      </Modal>
     </List>
   );
 };
