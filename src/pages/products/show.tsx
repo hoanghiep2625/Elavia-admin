@@ -15,6 +15,32 @@ import {
 
 const { Title } = Typography;
 
+// Định nghĩa types
+interface Size {
+  size: string;
+  stock: number;
+  price: number;
+}
+
+interface Color {
+  actualColor: string;
+  colorName: string;
+}
+
+interface ProductVariant {
+  _id: string;
+  sku: string;
+  color: Color;
+  sizes: Size[];
+  status: boolean;
+  createdAt: string;
+  images?: {
+    main?: {
+      url: string;
+    };
+  };
+}
+
 // Component hiển thị danh sách biến thể sản phẩm
 const ProductVariantsTable = ({ productId }: { productId: string }) => {
   const { data, isLoading } = useCustom({
@@ -42,7 +68,7 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
       title: "Màu",
       dataIndex: "color",
       key: "color",
-      render: (color: any) =>
+      render: (color: Color) =>
         color ? (
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
@@ -62,22 +88,29 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
         ),
     },
     {
-      title: "Giá",
-      dataIndex: "price",
-      key: "price",
-      render: (price: number) => price?.toLocaleString("vi-VN") + "đ",
+      title: "Giá thấp nhất",
+      key: "minPrice",
+      render: (_: unknown, record: ProductVariant) => {
+        if (!Array.isArray(record.sizes) || record.sizes.length === 0) {
+          return "Không có giá";
+        }
+        const minPrice = Math.min(
+          ...record.sizes.map((size: Size) => size.price || 0)
+        );
+        return minPrice.toLocaleString("vi-VN") + "đ";
+      },
     },
     {
       title: "Kích cỡ & Tồn kho",
       dataIndex: "sizes",
       key: "sizes",
-      render: (sizes: any[]) =>
+      render: (sizes: Size[]) =>
         Array.isArray(sizes) && sizes.length > 0 ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {sizes.map((sz, idx) => (
               <Tooltip
                 key={idx}
-                title={`Tồn kho: ${sz.stock ?? 0}`}
+                title={`Tồn kho: ${sz.stock ?? 0}, Giá: ${sz.price?.toLocaleString("vi-VN") ?? 0}đ`}
                 placement="top"
               >
                 <Tag color="blue">
@@ -93,9 +126,12 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
     {
       title: "Tổng tồn kho",
       key: "totalStock",
-      render: (_: any, record: any) =>
+      render: (_: unknown, record: ProductVariant) =>
         Array.isArray(record.sizes)
-          ? record.sizes.reduce((sum: any, sz: any) => sum + (sz.stock || 0), 0)
+          ? record.sizes.reduce(
+              (sum: number, sz: Size) => sum + (sz.stock || 0),
+              0
+            )
           : 0,
     },
     {
@@ -128,7 +164,7 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
     {
       title: "Hành động",
       key: "actions",
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: ProductVariant) => (
         <EditButton
           hideText
           size="small"
@@ -141,7 +177,7 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
 
   return (
     <Card title="Danh sách biến thể sản phẩm" style={{ marginTop: 32 }}>
-      <Table
+      <Table<ProductVariant>
         rowKey="_id"
         columns={columns}
         dataSource={variants}

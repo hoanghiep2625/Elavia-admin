@@ -93,11 +93,11 @@ export const ProductList = () => {
           });
 
           setSelectedRowKeys([]);
-          await refetch();
           open?.({
             type: "success",
             message: "Xóa sản phẩm thành công",
           });
+          await refetch();
         } catch (error) {
           open?.({
             type: "error",
