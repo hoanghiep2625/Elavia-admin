@@ -186,7 +186,7 @@ const handleDeleteReply = async () => {
             const galleryImgs = Array.isArray(
               record.productVariantId?.images?.product
             )
-              ? record.productVariantId.images.product.map((img) => img.url)
+              ? record.productVariantId.images.product.map((img: any) => img.url)
               : [];
 
             images.push(...galleryImgs);
