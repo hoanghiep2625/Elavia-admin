@@ -1,14 +1,15 @@
-import { DeleteButton, EditButton, List, ShowButton } from "@refinedev/antd";
+import { EditButton, List, ShowButton } from "@refinedev/antd";
 import {
   BaseRecord,
   useCustom,
   useCustomMutation,
   useNotification,
+  useDelete,
 } from "@refinedev/core";
-import { Button, Input, Space, Table, Modal, Tag, Tooltip, Image } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button, Input, Space, Table, Modal, Tooltip, Image, Select } from "antd";
+import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { TableRowSelection } from "antd/es/table/interface";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import dayjs from "dayjs";
 
 export const ProductList = () => {
@@ -22,7 +23,8 @@ export const ProductList = () => {
   const [filters, setFilters] = useState({ _name: "", _sku: "" });
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // Trigger search when filters change
+  const token = localStorage.getItem("token");
+
   useEffect(() => {
     setPagination((prev) => ({ ...prev, current: 1 }));
   }, [filters]);
@@ -45,8 +47,58 @@ export const ProductList = () => {
   const { mutate: bulkDelete } = useCustomMutation();
   const { open } = useNotification();
 
+  // Custom delete function với error handling tốt hơn
+  const handleSingleDelete = (productId: string) => {
+    Modal.confirm({
+      title: "Xác nhận xóa",
+      content: "Bạn có chắc chắn muốn xóa sản phẩm này?",
+      okText: "Xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/products/${productId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || "Có lỗi xảy ra khi xóa sản phẩm");
+          }
+
+          open?.({
+            type: "success",
+            message: "Xóa sản phẩm thành công",
+          });
+          refetch();
+        } catch (error: any) {
+          open?.({
+            type: "error",
+            message: "Không thể xóa sản phẩm",
+            description: error.message,
+          });
+        }
+      },
+    });
+  };
+
   const tableData = data?.data?.data ?? [];
   const total = data?.data?.total ?? 0;
+
+  const sortedTableData = useMemo(() => {
+    if (!Array.isArray(tableData)) return [];
+
+    return [...tableData].sort((a, b) => {
+      if (a.status === false && b.status === true) return -1;
+      if (a.status === true && b.status === false) return 1;
+
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [tableData]);
 
   const handleTableChange = (
     paginationConfig: any,
@@ -99,9 +151,14 @@ export const ProductList = () => {
           });
           await refetch();
         } catch (error) {
+          const apiError = error as { response?: { data?: { message?: string } }; message?: string };
+          const errorMessage = apiError?.response?.data?.message || 
+                               apiError?.message || 
+                               "Có lỗi xảy ra khi xóa sản phẩm";
           open?.({
             type: "error",
-            message: "Có lỗi xảy ra",
+            message: "Không thể xóa sản phẩm",
+            description: errorMessage,
           });
         }
       },
@@ -150,7 +207,7 @@ export const ProductList = () => {
 
       <Table
         rowSelection={rowSelection}
-        dataSource={Array.isArray(tableData) ? tableData : []}
+        dataSource={sortedTableData} 
         rowKey="_id"
         loading={isLoading}
         pagination={{
@@ -161,6 +218,10 @@ export const ProductList = () => {
           showTotal: (total) => `Tổng ${total} bản ghi`,
         }}
         onChange={handleTableChange}
+        // ✅ Thêm highlight cho row không hoạt động
+        rowClassName={(record) => 
+          record.status === false ? 'inactive-product-row' : ''
+        }
       >
         <Table.Column
           title="STT"
@@ -196,7 +257,6 @@ export const ProductList = () => {
         <Table.Column
           title="Giá"
           render={(_, record: any) => {
-            // Lấy giá từ size nhỏ nhất của representativeVariant
             let price = 0;
             if (
               record.representativeVariantId?.sizes &&
@@ -240,15 +300,65 @@ export const ProductList = () => {
           align="center"
           render={(count) => count ?? 0}
         />
+        
+        {/* ✅ Cột trạng thái sử dụng pattern như reviews */}
         <Table.Column
-          dataIndex="status"
           title="Trạng thái"
-          render={(status) => (
-            <Tag color={status ? "green" : "red"}>
-              {status ? "Hoạt động" : "Không hoạt động"}
-            </Tag>
-          )}
+          dataIndex="status"
+          align="center"
+          width={160}
+          render={(status, record) => {
+            return (
+              <Select
+                className="product-status-select"
+                value={status}
+                onChange={async (newStatus) => {
+                  try {
+                    // ✅ Gọi API trực tiếp như reviews (không dùng mutation)
+                    await fetch(
+                      `${import.meta.env.VITE_API_URL}/admin/products/${record._id}`,
+                      {
+                        method: "PATCH",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({ status: newStatus }),
+                      }
+                    );
+                    
+                    // ✅ Refetch data để reload bảng
+                    refetch();
+                    
+                    // ✅ Hiện thông báo thành công
+                    open?.({
+                      type: "success",
+                      message: `Cập nhật trạng thái thành công: ${newStatus ? 'Hoạt động' : 'Không hoạt động'}`,
+                    });
+                  } catch (error) {
+                    console.error("Cập nhật trạng thái thất bại:", error);
+                    open?.({
+                      type: "error",
+                      message: "Có lỗi xảy ra khi cập nhật trạng thái",
+                    });
+                  }
+                }}
+                style={{
+                  width: 120,
+                  backgroundColor: status === false ? '#fff2f0' : 'transparent'
+                }}
+              >
+                <Select.Option value={true}>
+                  <span style={{ color: '#16a34a', fontWeight: '500' }}>Hoạt động</span>
+                </Select.Option>
+                <Select.Option value={false}>
+                  <span style={{ color: '#dc2626', fontWeight: '500' }}>Không hoạt động</span>
+                </Select.Option>
+              </Select>
+            );
+          }}
         />
+        
         <Table.Column
           dataIndex="createdAt"
           title="Ngày tạo"
@@ -271,11 +381,12 @@ export const ProductList = () => {
             <Space size="small">
               <EditButton hideText size="small" recordItemId={record._id} />
               <ShowButton hideText size="small" recordItemId={record._id} />
-              <DeleteButton
-                hideText
+              <Button
                 size="small"
-                recordItemId={record._id}
-                onSuccess={() => refetch()}
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleSingleDelete(record._id)}
+                title="Xóa sản phẩm"
               />
               <Tooltip title="Thêm biến thể">
                 <Button
