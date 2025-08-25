@@ -1,13 +1,13 @@
 import { useLogin } from "@refinedev/core";
 import { Button, Form, Input, Typography, Card, Space, theme } from "antd";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export const Login = () => {
   const { token } = theme.useToken();
   const { mutate: login, isLoading } = useLogin();
 
-  const onFinish = (values: any) => {
+  const onFinish = (values: { email: string; password: string }) => {
     login(values);
   };
 
