@@ -1,8 +1,8 @@
 import { EditButton, List, ShowButton } from "@refinedev/antd";
 import type { BaseRecord } from "@refinedev/core";
-import { Input, Space, Table, Tag, Button } from "antd";
+import { Input, Space, Table, Button, Select } from "antd";
 import { useState } from "react";
-import { useCustom } from "@refinedev/core";
+import { useCustom, useUpdate } from "@refinedev/core";
 
 export const UserList = () => {
   const [pagination, setPagination] = useState({
@@ -17,7 +17,19 @@ export const UserList = () => {
   const [searchEmail, setSearchEmail] = useState("");
   const [searchPhone, setSearchPhone] = useState("");
 
-  const { data, isLoading } = useCustom({
+  const { mutate: updateUser } = useUpdate({
+    resource: "users",
+    successNotification: {
+      message: "Cập nhật vai trò thành công",
+      type: "success",
+    },
+    errorNotification: {
+      message: "Lỗi khi cập nhật vai trò",
+      type: "error",
+    },
+  });
+
+  const { data, isLoading, refetch } = useCustom({
     url: "/admin/users",
     method: "get",
     config: {
@@ -61,6 +73,21 @@ export const UserList = () => {
     setSearchEmail(pendingEmail);
     setSearchPhone(pendingPhone);
     setPagination({ ...pagination, current: 1 });
+  };
+
+  // Handle thay đổi vai trò
+  const handleRoleChange = (userId: string, newRole: string) => {
+    updateUser(
+      {
+        id: userId,
+        values: { role: newRole },
+      },
+      {
+        onSuccess: () => {
+          refetch();
+        },
+      }
+    );
   };
 
   return (
@@ -121,17 +148,36 @@ export const UserList = () => {
         <Table.Column
           dataIndex="role"
           title="Vai trò"
-          render={(role: string) => {
-            switch (role) {
-              case "1":
-                return <Tag color="blue">Khách hàng</Tag>;
-              case "2":
-                return <Tag color="green">Người bán</Tag>;
-              case "3":
-                return <Tag color="red">Quản trị viên</Tag>;
-              default:
-                return <Tag color="default">Không xác định</Tag>;
-            }
+          render={(role: string, record: BaseRecord) => {
+            return (
+              <Select
+                value={role}
+                onChange={(newRole) => handleRoleChange(record._id, newRole)}
+                style={{
+                  width: 140,
+                  backgroundColor: role === "3" ? "#fff2f0" : "transparent",
+                  borderColor: role === "3" ? "#f5222d" : "#1890ff",
+                }}
+                options={[
+                  {
+                    value: "1",
+                    label: (
+                      <span style={{ color: "#1890ff", fontWeight: "500" }}>
+                        Khách hàng
+                      </span>
+                    ),
+                  },
+                  {
+                    value: "3",
+                    label: (
+                      <span style={{ color: "#f5222d", fontWeight: "500" }}>
+                        Quản trị viên
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            );
           }}
         />
         <Table.Column
