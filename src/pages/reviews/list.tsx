@@ -356,7 +356,6 @@ const handleDeleteReply = async () => {
                 style={{ width: 120 }}
               >
                 <Select.Option value="approved">Đã duyệt</Select.Option>
-                <Select.Option value="pending">Chờ duyệt</Select.Option>
                 <Select.Option value="rejected">Từ chối</Select.Option>
               </Select>
             );
