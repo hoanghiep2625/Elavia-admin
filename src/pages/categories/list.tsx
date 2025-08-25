@@ -1,12 +1,13 @@
 import {
-  DeleteButton,
   EditButton,
   List,
   ShowButton,
   useTable,
 } from "@refinedev/antd";
-import { Table, Input, Space } from "antd";
+import { Table, Input, Space, Button, Modal } from "antd";
 import { useState, useEffect, useMemo } from "react";
+import { useNotification } from "@refinedev/core";
+import { DeleteOutlined } from "@ant-design/icons";
 
 function removeVietnameseTones(str: string) {
   return str
@@ -46,8 +47,68 @@ export const CategoryList = () => {
     syncWithLocation: true,
   });
 
+  const { open } = useNotification();
   const [categories, setCategories] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+
+  // Custom delete handler với better error handling
+  const handleDelete = async (record: any) => {
+    Modal.confirm({
+      title: `Xác nhận xóa danh mục`,
+      content: (
+        <div>
+          <p>Bạn có chắc chắn muốn xóa danh mục <strong>"{record.name}"</strong>?</p>
+          <p style={{ color: '#ff4d4f', fontSize: '12px' }}>
+            ⚠️ Lưu ý: Không thể xóa danh mục nếu còn danh mục con
+          </p>
+        </div>
+      ),
+      okText: 'Xóa',
+      cancelText: 'Hủy',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/categories/${record._id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            // Hiển thị lỗi chi tiết
+            open?.({
+              type: 'error',
+              message: 'Không thể xóa danh mục',
+              description: result.message || result.error || 'Có lỗi xảy ra khi xóa danh mục',
+            });
+            return;
+          }
+
+          // Thành công
+          open?.({
+            type: 'success',
+            message: 'Xóa thành công',
+            description: result.message || `Đã xóa danh mục "${record.name}" thành công`,
+          });
+
+          // Refresh data
+          window.location.reload();
+
+        } catch (error: any) {
+          open?.({
+            type: 'error',
+            message: 'Lỗi kết nối',
+            description: 'Không thể kết nối đến server. Vui lòng thử lại.',
+          });
+        }
+      },
+    });
+  };
 
   useEffect(() => {
     const response = tableProps?.dataSource as any;
@@ -149,7 +210,14 @@ export const CategoryList = () => {
         <Space>
           <EditButton hideText size="small" recordItemId={record._id} />
           <ShowButton hideText size="small" recordItemId={record._id} />
-          <DeleteButton hideText size="small" recordItemId={record._id} />
+          <Button
+            type="primary"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+            title="Xóa danh mục"
+          />
         </Space>
       ),
     },

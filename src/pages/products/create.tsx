@@ -15,6 +15,10 @@ import {
   message,
   Space,
   Popconfirm,
+  Progress,
+  Spin,
+  notification,
+  Result,
 } from "antd";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -22,6 +26,8 @@ import {
   UploadOutlined,
   DeleteOutlined,
   PlusOutlined,
+  CheckCircleOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import { UploadFile } from "antd/lib/upload/interface";
@@ -59,6 +65,7 @@ const VariantForm = ({
   selectedAttributes,
   setSelectedAttributes,
   isRemovable,
+  disabled = false,
 }: any) => {
   // Quản lý ảnh riêng cho từng biến thể
   const [mainImage, setMainImage] = useState<UploadFile[]>(
@@ -180,8 +187,9 @@ const VariantForm = ({
             onConfirm={() => onRemove(index)}
             okText="Xóa"
             cancelText="Hủy"
+            disabled={disabled}
           >
-            <Button icon={<DeleteOutlined />} danger size="small">
+            <Button icon={<DeleteOutlined />} danger size="small" disabled={disabled}>
               Xóa
             </Button>
           </Popconfirm>
@@ -201,6 +209,7 @@ const VariantForm = ({
               unCheckedChildren="Inactive"
               checked={variant.status}
               onChange={(v) => handleFieldChange("status", v)}
+              disabled={disabled}
             />
           </Form.Item>
         </Col>
@@ -217,6 +226,7 @@ const VariantForm = ({
                 handleNestedChange("color", "colorName", e.target.value)
               }
               placeholder="Nhập tên màu"
+              disabled={disabled}
             />
           </Form.Item>
           <Form.Item
@@ -231,6 +241,7 @@ const VariantForm = ({
               onChange={(e) =>
                 handleNestedChange("color", "actualColor", e.target.value)
               }
+              disabled={disabled}
             />
           </Form.Item>
           <Form.Item
@@ -243,6 +254,7 @@ const VariantForm = ({
               value={variant.color?.baseColor}
               onChange={(v) => handleNestedChange("color", "baseColor", v)}
               placeholder="Chọn màu cơ bản"
+              disabled={disabled}
             >
               <Select.Option value="black">Đen</Select.Option>
               <Select.Option value="white">Trắng</Select.Option>
@@ -274,8 +286,9 @@ const VariantForm = ({
               beforeUpload={() => false}
               onChange={(info) => setMainImage(info.fileList)}
               fileList={mainImage}
+              disabled={disabled}
             >
-              <Button icon={<UploadOutlined />}>Tải lên</Button>
+              <Button icon={<UploadOutlined />} disabled={disabled}>Tải lên</Button>
             </Upload>
           </Form.Item>
         </Col>
@@ -292,8 +305,9 @@ const VariantForm = ({
               beforeUpload={() => false}
               onChange={(info) => setHoverImage(info.fileList)}
               fileList={hoverImage}
+              disabled={disabled}
             >
-              <Button icon={<UploadOutlined />}>Tải lên</Button>
+              <Button icon={<UploadOutlined />} disabled={disabled}>Tải lên</Button>
             </Upload>
           </Form.Item>
         </Col>
@@ -310,8 +324,9 @@ const VariantForm = ({
               beforeUpload={() => false}
               onChange={(info) => setProductImages(info.fileList)}
               fileList={productImages}
+              disabled={disabled}
             >
-              <Button icon={<UploadOutlined />}>Tải lên</Button>
+              <Button icon={<UploadOutlined />} disabled={disabled}>Tải lên</Button>
             </Upload>
           </Form.Item>
         </Col>
@@ -325,6 +340,7 @@ const VariantForm = ({
                 value={priceMode}
                 onChange={handlePriceModeChange}
                 style={{ width: "100%" }}
+                disabled={disabled}
               >
                 <Select.Option value="single">
                   Giá chung cho tất cả size
@@ -352,7 +368,8 @@ const VariantForm = ({
                   formatter={(value) =>
                     `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                   }
-                  parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ""))}
+                  parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, "") || "0")}
+                  disabled={disabled}
                 />
               </Form.Item>
             </Col>
@@ -389,6 +406,7 @@ const VariantForm = ({
                   value={variant.sizes[sizeIdx]?.stock}
                   onChange={(v) => handleSizeChange(sizeIdx, "stock", v || 0)}
                   placeholder={`Số lượng size ${size}`}
+                  disabled={disabled}
                 />
               </Form.Item>
             </Col>
@@ -412,8 +430,9 @@ const VariantForm = ({
                       `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                     }
                     parser={(value) =>
-                      Number(value!.replace(/\$\s?|(,*)/g, ""))
+                      Number(value?.replace(/\$\s?|(,*)/g, "") || "0")
                     }
+                    disabled={disabled}
                   />
                 </Form.Item>
               </Col>
@@ -431,6 +450,7 @@ const VariantForm = ({
                 onChange={handleSelectAttributes}
                 value={variant.selectedAttributes}
                 allowClear
+                disabled={disabled}
               >
                 {attributes.map((attr: any) => (
                   <Select.Option key={attr.slug} value={attr.slug}>
@@ -459,6 +479,7 @@ const VariantForm = ({
                     allowClear
                     value={variant.attributes?.[slug]}
                     onChange={(v) => handleAttributeChange(slug, v)}
+                    disabled={disabled}
                   >
                     {attr.values.map((val: string) => (
                       <Select.Option key={val} value={val}>
@@ -490,7 +511,20 @@ export const ProductCreate: React.FC = () => {
   const [attributes, setAttributes] = useState<any[]>([]);
   const [variants, setVariants] = useState<any[]>([]);
   const [variantAttrs, setVariantAttrs] = useState<string[][]>([]); // Lưu selectedAttributes cho từng biến thể
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
+
+  // Method để navigate an toàn và tránh unsaved changes warning
+  const navigateToProducts = () => {
+    // Clear any form dirty state trước khi navigate
+    if (formProps.form) {
+      formProps.form.resetFields();
+    }
+    navigate("/products", { replace: true });
+  };
 
   useEffect(() => {
     if (categoryTableProps?.dataSource) {
@@ -512,6 +546,35 @@ export const ProductCreate: React.FC = () => {
       })
       .then((res) => setAttributes(res.data.data || []));
   }, []);
+
+  // Ngăn người dùng rời khỏi trang khi đang submit
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSubmitting) {
+        e.preventDefault();
+        e.returnValue = 'Đang tạo sản phẩm, vui lòng đợi...';
+        return 'Đang tạo sản phẩm, vui lòng đợi...';
+      }
+    };
+
+    const handlePopstate = (e: PopStateEvent) => {
+      if (isSubmitting) {
+        e.preventDefault();
+        window.history.pushState(null, '', window.location.pathname);
+        message.warning('Vui lòng đợi hoàn thành việc tạo sản phẩm!');
+      }
+    };
+
+    if (isSubmitting) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('popstate', handlePopstate);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopstate);
+    };
+  }, [isSubmitting]);
 
   // Khởi tạo biến thể đầu tiên
   useEffect(() => {
@@ -658,8 +721,20 @@ export const ProductCreate: React.FC = () => {
       message.error("Vui lòng điền đầy đủ thông tin cho tất cả biến thể!");
       return;
     }
+
+    setIsSubmitting(true);
+    setProgress(0);
+    setCurrentStep("Đang tạo sản phẩm...");
+
+    // Clear form dirty state ngay khi bắt đầu submit để tránh unsaved warning
+    if (formProps.form?.setFieldsValue) {
+      const currentValues = formProps.form.getFieldsValue();
+      formProps.form.setFieldsValue(currentValues);
+    }
+
     try {
       // 1. Tạo sản phẩm
+      setProgress(20);
       const productRes = await axios.post(
         `${import.meta.env.VITE_API_URL}/admin/products`,
         {
@@ -677,13 +752,20 @@ export const ProductCreate: React.FC = () => {
         }
       );
       const productId = productRes.data._id;
+      setProgress(40);
 
       // 2. Tạo các biến thể
-      for (const variant of variants) {
+      setCurrentStep("Đang tạo biến thể sản phẩm...");
+      const totalVariants = variants.length;
+      
+      for (let i = 0; i < variants.length; i++) {
+        const variant = variants[i];
+        setCurrentStep(`Đang tạo biến thể ${i + 1}/${totalVariants}...`);
+        
         const formData = new FormData();
         // Thuộc tính
         const attributesArray = Object.entries(variant.attributes || {})
-          .filter(([_, val]) => val !== undefined && val !== "")
+          .filter(([, val]) => val !== undefined && val !== "")
           .map(([attribute, value]) => ({ attribute, value }));
         attributesArray.forEach((attr, index) => {
           formData.append(`attributes[${index}][attribute]`, attr.attribute);
@@ -697,10 +779,10 @@ export const ProductCreate: React.FC = () => {
         formData.append("color.colorName", variant.color.colorName);
         formData.append("status", String(variant.status));
 
-        variant.sizes.forEach((sizeObj: any, i: number) => {
-          formData.append(`sizes[${i}][size]`, sizeObj.size);
-          formData.append(`sizes[${i}][stock]`, sizeObj.stock.toString());
-          formData.append(`sizes[${i}][price]`, sizeObj.price.toString());
+        variant.sizes.forEach((sizeObj: any, index: number) => {
+          formData.append(`sizes[${index}][size]`, sizeObj.size);
+          formData.append(`sizes[${index}][stock]`, sizeObj.stock.toString());
+          formData.append(`sizes[${index}][price]`, sizeObj.price.toString());
         });
 
         if (variant.mainImage[0]?.originFileObj) {
@@ -725,10 +807,31 @@ export const ProductCreate: React.FC = () => {
             },
           }
         );
+
+        // Cập nhật progress cho từng variant
+        const variantProgress = 40 + ((i + 1) / totalVariants) * 50;
+        setProgress(variantProgress);
       }
 
-      message.success("Tạo sản phẩm và các biến thể thành công!");
+      setProgress(100);
+      setCurrentStep("Hoàn thành!");
+
+      // Hiển thị notification thay vì message
+      notification.success({
+        message: 'Tạo sản phẩm thành công!',
+        description: `Đã tạo sản phẩm "${values.name}" với ${variants.length} biến thể`,
+        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+        duration: 3,
+        placement: 'topRight',
+      });
+
+      // Reset form và state ngay lập tức để tránh unsaved changes warning
       formProps.form?.resetFields();
+      formProps.form?.setFieldsValue({
+        sku: generateSKU(),
+        status: true,
+      });
+      
       setVariants([
         {
           status: true,
@@ -753,93 +856,192 @@ export const ProductCreate: React.FC = () => {
         },
       ]);
       setVariantAttrs([[]]);
-      navigate("/products");
+
+      // Hiển thị success result trong 2 giây rồi chuyển trang
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setIsSubmitting(false);
+        setProgress(0);
+        setCurrentStep("");
+        // Sử dụng method an toàn để navigate
+        navigateToProducts();
+      }, 2000);
+
     } catch (err) {
-      message.error("Lỗi khi tạo sản phẩm hoặc biến thể!");
+      setIsSubmitting(false);
+      setProgress(0);
+      setCurrentStep("");
+      
+      notification.error({
+        message: 'Lỗi tạo sản phẩm',
+        description: 'Đã xảy ra lỗi khi tạo sản phẩm hoặc biến thể. Vui lòng thử lại!',
+        duration: 4,
+        placement: 'topRight',
+      });
       console.error(err);
     }
   };
 
   return (
-    <Create saveButtonProps={saveButtonProps}>
-      <Form {...formProps} layout="vertical" onFinish={handleSubmit}>
-        <Form.Item name="sku" hidden>
-          <Input />
-        </Form.Item>
-
-        <Form.Item
-          label="Tên sản phẩm"
-          name="name"
-          rules={[{ required: true, message: "Vui lòng nhập tên sản phẩm" }]}
+    <>
+      {/* Loading Overlay */}
+      {isSubmitting && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
         >
-          <Input placeholder="Nhập tên sản phẩm" />
-        </Form.Item>
-
-        <Form.Item
-          label="Danh mục"
-          name="categoryId"
-          rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
-        >
-          <TreeSelect
-            treeData={treeData}
-            placeholder="Chọn danh mục"
-            allowClear
-            treeDefaultExpandedKeys={[]}
+          <Spin 
+            size="large" 
+            indicator={<LoadingOutlined style={{ fontSize: 48 }} spin />}
           />
-        </Form.Item>
-
-        <Form.Item
-          label="Mô tả ngắn"
-          name="shortDescription"
-          rules={[{ required: true, message: "Vui lòng nhập mô tả ngắn" }]}
-        >
-          <Input.TextArea rows={2} placeholder="Nhập mô tả ngắn" />
-        </Form.Item>
-
-        <Form.Item label="Mô tả chi tiết" name="description">
-          <ReactQuill
-            theme="snow"
-            onChange={(value) =>
-              formProps.form?.setFieldsValue({ description: value })
-            }
-            value={formProps.form?.getFieldValue("description") || ""}
+          <div style={{ marginTop: 16, fontSize: 16, color: "#666" }}>
+            {currentStep}
+          </div>
+          <Progress
+            percent={progress}
+            style={{ width: 300, marginTop: 16 }}
+            strokeColor={{
+              from: '#108ee9',
+              to: '#87d068',
+            }}
+            status={progress === 100 ? "success" : "active"}
           />
-        </Form.Item>
-
-        <Form.Item
-          label="Trạng thái"
-          name="status"
-          valuePropName="checked"
-          initialValue={true}
-          rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-        >
-          <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-        </Form.Item>
-
-        {/* --- FORM VARIANTS --- */}
-        {variants.map((variant, idx) => (
-          <VariantForm
-            key={idx}
-            index={idx}
-            variant={variant}
-            onChange={handleVariantChange}
-            onRemove={handleRemoveVariant}
-            attributes={attributes}
-            isRemovable={variants.length > 1}
-          />
-        ))}
-
-        <div style={{ margin: "16px 0" }}>
-          <Button
-            type="dashed"
-            icon={<PlusOutlined />}
-            onClick={handleAddVariant}
-            block
-          >
-            Tạo biến thể mới
-          </Button>
         </div>
-      </Form>
-    </Create>
+      )}
+
+      {/* Success Result */}
+      {showSuccess && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "#fff",
+            zIndex: 9999,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Result
+            status="success"
+            title="Tạo sản phẩm thành công!"
+            subTitle="Đang chuyển hướng về danh sách sản phẩm..."
+            icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+          />
+        </div>
+      )}
+
+      <Create saveButtonProps={{
+        ...saveButtonProps,
+        loading: isSubmitting,
+        disabled: isSubmitting,
+      }}>
+        <Form {...formProps} layout="vertical" onFinish={handleSubmit}>
+          <Form.Item name="sku" hidden>
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            label="Tên sản phẩm"
+            name="name"
+            rules={[{ required: true, message: "Vui lòng nhập tên sản phẩm" }]}
+          >
+            <Input placeholder="Nhập tên sản phẩm" disabled={isSubmitting} />
+          </Form.Item>
+
+          <Form.Item
+            label="Danh mục"
+            name="categoryId"
+            rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+          >
+            <TreeSelect
+              treeData={treeData}
+              placeholder="Chọn danh mục"
+              allowClear
+              treeDefaultExpandedKeys={[]}
+              disabled={isSubmitting}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Mô tả ngắn"
+            name="shortDescription"
+            rules={[{ required: true, message: "Vui lòng nhập mô tả ngắn" }]}
+          >
+            <Input.TextArea 
+              rows={2} 
+              placeholder="Nhập mô tả ngắn" 
+              disabled={isSubmitting}
+            />
+          </Form.Item>
+
+          <Form.Item label="Mô tả chi tiết" name="description">
+            <ReactQuill
+              theme="snow"
+              onChange={(value) =>
+                formProps.form?.setFieldsValue({ description: value })
+              }
+              value={formProps.form?.getFieldValue("description") || ""}
+              readOnly={isSubmitting}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Trạng thái"
+            name="status"
+            valuePropName="checked"
+            initialValue={true}
+            rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+          >
+            <Switch 
+              checkedChildren="Active" 
+              unCheckedChildren="Inactive" 
+              disabled={isSubmitting}
+            />
+          </Form.Item>
+
+          {/* --- FORM VARIANTS --- */}
+          {variants.map((variant, idx) => (
+            <VariantForm
+              key={idx}
+              index={idx}
+              variant={variant}
+              onChange={handleVariantChange}
+              onRemove={handleRemoveVariant}
+              attributes={attributes}
+              isRemovable={variants.length > 1}
+              disabled={isSubmitting}
+            />
+          ))}
+
+          <div style={{ margin: "16px 0" }}>
+            <Button
+              type="dashed"
+              icon={<PlusOutlined />}
+              onClick={handleAddVariant}
+              block
+              disabled={isSubmitting}
+            >
+              Tạo biến thể mới
+            </Button>
+          </div>
+        </Form>
+      </Create>
+    </>
   );
 };

@@ -353,11 +353,18 @@ const handleDeleteReply = async () => {
                     console.error("Cập nhật trạng thái thất bại:", err);
                   }
                 }}
-                style={{ width: 120 }}
+                style={{ 
+                  width: 120,
+                  backgroundColor: status === "rejected" ? '#fff2f0' : status === "approved" ? '#f6ffed' : 'transparent',
+                  borderColor: status === "rejected" ? '#f5222d' : status === "approved" ? '#52c41a' : '#d9d9d9'
+                }}
               >
-                <Select.Option value="approved">Đã duyệt</Select.Option>
-                <Select.Option value="pending">Chờ duyệt</Select.Option>
-                <Select.Option value="rejected">Từ chối</Select.Option>
+                <Select.Option value="approved">
+                  <span style={{ color: '#52c41a', fontWeight: '500' }}>Đã duyệt</span>
+                </Select.Option>
+                <Select.Option value="rejected">
+                  <span style={{ color: '#f5222d', fontWeight: '500' }}>Từ chối</span>
+                </Select.Option>
               </Select>
             );
           }}

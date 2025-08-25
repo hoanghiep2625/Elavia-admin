@@ -164,11 +164,15 @@ export const OrderList = () => {
       {
         onSuccess: () => {
           message.success("Cập nhật trạng thái giao hàng thành công");
-          // Refresh data
+          
+          // Invalidate cache
           invalidate({
             resource: "orders",
-            invalidates: ["list"],
+            invalidates: ["list", "detail"],
           });
+          
+          // Refetch data để cập nhật ngay lập tức
+          refetch();
         },
         onError: (error) => {
           message.error(`Lỗi cập nhật trạng thái: ${error.message}`);
@@ -201,7 +205,7 @@ export const OrderList = () => {
   if (searchEmail) query._email = searchEmail;
   if (searchStatus) query._status = searchStatus;
 
-  const { data, isLoading } = useCustom({
+  const { data, isLoading, refetch } = useCustom({
     url: "/admin/orders",
     method: "get",
     config: {

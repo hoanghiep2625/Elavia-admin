@@ -1,5 +1,5 @@
 import React from "react";
-import { EditButton, Show } from "@refinedev/antd";
+import { EditButton, Show, DeleteButton } from "@refinedev/antd";
 import { useCustom, useShow } from "@refinedev/core";
 import {
   Typography,
@@ -10,8 +10,12 @@ import {
   Tag,
   Card,
   Tooltip,
-  
+  Space,
+  message,
+  Popconfirm,
+  Button,
 } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
 
@@ -43,13 +47,42 @@ interface ProductVariant {
 
 // Component hiển thị danh sách biến thể sản phẩm
 const ProductVariantsTable = ({ productId }: { productId: string }) => {
-  const { data, isLoading } = useCustom({
+  const { data, isLoading, refetch } = useCustom({
     url: `/admin/variants-product/${productId}`,
     method: "get",
   });
 
   // Nếu API trả về { data: [...] }
   const variants = data?.data?.data || data?.data || [];
+
+  const handleDelete = async (variantId: string) => {
+    try {
+      console.log('Deleting variant:', variantId);
+      console.log('API URL:', `${import.meta.env.VITE_API_URL}/admin/variants/${variantId}`);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/variants/${variantId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+
+      if (response.ok) {
+        message.success("Xóa biến thể thành công!");
+        refetch(); // Refresh lại danh sách
+      } else {
+        message.error(responseData.message || "Xóa biến thể thất bại!");
+      }
+    } catch (error) {
+      message.error("Có lỗi xảy ra khi xóa biến thể!");
+      console.error("Delete error:", error);
+    }
+  };
 
   const columns = [
     {
@@ -164,13 +197,42 @@ const ProductVariantsTable = ({ productId }: { productId: string }) => {
     {
       title: "Hành động",
       key: "actions",
+      width: 120,
       render: (_: unknown, record: ProductVariant) => (
-        <EditButton
-          hideText
-          size="small"
-          resource="variants"
-          recordItemId={record._id}
-        />
+        <Space size="small">
+          <EditButton
+            hideText
+            size="small"
+            resource="variants"
+            recordItemId={record._id}
+          />
+          <Popconfirm
+            title="Xóa biến thể"
+            description={
+              <div>
+                <p>Bạn có chắc chắn muốn xóa biến thể này?</p>
+                <p><strong>SKU:</strong> {record.sku}</p>
+                <p><strong>Màu:</strong> {record.color?.colorName}</p>
+              </div>
+            }
+            onConfirm={() => handleDelete(record._id)}
+            okText="Xóa"
+            cancelText="Hủy"
+            okType="danger"
+            placement="topRight"
+          >
+            <Button
+              type="text"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              style={{
+                border: '1px solid #ff4d4f',
+                borderRadius: '4px'
+              }}
+            />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
